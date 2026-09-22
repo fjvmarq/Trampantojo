@@ -2,12 +2,12 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.1.0';
-import * as S from './store.js?v=0.1.0';
-import { weightChart, rateChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.1.0';
-import { messageOfTheDay } from './messages.js?v=0.1.0';
+import * as C from './calc.js?v=0.2.2';
+import * as S from './store.js?v=0.2.2';
+import { weightChart, rateChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.2.2';
+import { messageOfTheDay } from './messages.js?v=0.2.2';
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.2';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -150,6 +150,7 @@ function renderHoy(s) {
   }
   weightChart($('#chart-hoy'), {
     daily: s.daily, goalKg: p.goalKg, healthy: s.healthy, rangeDays: 30, perWeek: s.rate?.perWeek, compact: true,
+    plan: s.plan, rateKgWeek: p.rateKgWeek, milestones: s.milestones,
   });
 
   // fichas
@@ -168,6 +169,14 @@ function renderHoy(s) {
 
   $('#tiles-label').hidden = !s.hasData;
   if (s.hasData) {
+    if (s.pace) {
+      const pz = paceZone(s.pace);
+      tile('Tu plan', pz.value, `hoy tocaría ${kg1(s.planKgToday)} kg`, tag(pz));
+    }
+    if (s.nextMilestone) {
+      const nm = s.nextMilestone;
+      tile('Próximo objetivo', `${kg1(nm.kg)} kg`, `${nm.name ? nm.name + ' · ' : ''}${shortDate(nm.date)}`, tag(milestoneZone(nm)));
+    }
     tile('Ritmo real', s.rate ? `${signed1(s.rate.perWeek)} kg/sem` : '—',
       s.rate ? 'medido en las últimas 3 semanas' : 'hacen falta 4 pesadas en una semana');
     tile('Meta', `${kg1(p.goalKg)} kg`, goalSentence(s, true));
@@ -197,13 +206,86 @@ function goalSentence(s, short = false) {
   }
 }
 
+/* ── tu plan y tus objetivos ─────────────────────────────────────────── */
+
+function paceZone(pace) {
+  if (pace.status === 'ahead') return { status: 'good', value: 'Por delante', label: `${kg1(-pace.diff)} kg mejor` };
+  if (pace.status === 'behind') return { status: 'warning', value: 'Por detrás', label: `${kg1(pace.diff)} kg de más` };
+  return { status: 'good', value: 'En tu carril', label: 'a buen ritmo' };
+}
+
+function paceSentence(s) {
+  if (!s.pace) return '';
+  if (s.pace.status === 'ahead') return `Vas ${kg1(-s.pace.diff)} kg por delante de tu plan.`;
+  if (s.pace.status === 'behind') return `Vas ${kg1(s.pace.diff)} kg por encima de tu plan.`;
+  return 'Vas dentro del carril de tu plan.';
+}
+
+function milestoneZone(m) {
+  switch (m.status) {
+    case 'conseguido': return { status: 'good', label: 'Conseguido' };
+    case 'en-camino': return { status: 'good', label: 'Vas bien' };
+    case 'detras': return { status: 'warning', label: 'Vas justo' };
+    case 'pasado': return { status: 'warning', label: `A ${kg1(m.short)} kg` };
+    default: return { status: 'neutral', label: 'Falta ritmo' };
+  }
+}
+
+function milestoneDetail(m) {
+  const far = C.daysBetween(C.todayISO(), m.date) > 300;
+  const when = C.parseDate(m.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', ...(far ? { year: 'numeric' } : {}) });
+  const base = `${kg1(m.kg)} kg · ${when}`;
+  switch (m.status) {
+    case 'conseguido': return `${base} · lo lograste el ${shortDate(m.reachedOn)}`;
+    case 'en-camino': return `${base} · a tu ritmo llegas a ${kg1(m.projected)} kg`;
+    case 'detras': return `${base} · hacen falta ${kg1(m.needed)} kg/sem`;
+    case 'pasado': return `${base} · la fecha ya pasó`;
+    default: return `${base} · con unas semanas de pesadas te digo si llegas`;
+  }
+}
+
+function renderGoals(s) {
+  const list = $('#goals');
+  list.replaceChildren();
+  (s.milestones || []).forEach(m => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'log-row';
+    b.dataset.goal = m.id;
+    const main = document.createElement('span'); main.className = 'log-main';
+    const t = document.createElement('span'); t.className = 'log-date'; t.textContent = m.name || `${kg1(m.kg)} kg`;
+    const sub = document.createElement('span'); sub.className = 'log-sub'; sub.textContent = milestoneDetail(m);
+    main.append(t, sub);
+    const side = document.createElement('span'); side.className = 'log-side';
+    side.appendChild(tag(milestoneZone(m)));
+    const chev = document.createElement('span'); chev.className = 'chev'; chev.setAttribute('aria-hidden', 'true');
+    b.append(main, side, chev);
+    li.appendChild(b);
+    list.appendChild(li);
+  });
+  const li = document.createElement('li');
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'log-row add';
+  add.dataset.goal = '';
+  const main = document.createElement('span'); main.className = 'log-main';
+  const t = document.createElement('span'); t.className = 'log-date'; t.textContent = 'Añadir objetivo';
+  main.appendChild(t);
+  add.appendChild(main);
+  li.appendChild(add);
+  list.appendChild(li);
+}
+
 function renderEvo(s) {
   const p = state.profile;
   $$('.segmented button[data-range]').forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.range) === ui.range)));
-  $('#evo-sub').textContent = s.hasData ? goalSentence(s) : '';
+  $('#evo-sub').textContent = s.hasData ? [paceSentence(s), goalSentence(s)].filter(Boolean).join(' ') : '';
   weightChart($('#chart-evo'), {
     daily: s.daily, goalKg: p.goalKg, healthy: s.healthy, rangeDays: ui.range || null, perWeek: s.rate?.perWeek,
+    plan: s.plan, rateKgWeek: p.rateKgWeek, milestones: s.milestones,
   });
+  renderGoals(s);
   rateChart($('#chart-rate'), s.weekly);
 
   const facts = $('#facts');
@@ -291,6 +373,11 @@ function renderPerfil(s) {
     st.textContent = `Última copia: ${longDate(last)}${days > 0 ? ` (hace ${days} ${days === 1 ? 'día' : 'días'})` : ' (hoy)'}.`;
     if (days > 14) st.classList.add('warn');
   }
+  const pl = s.plan;
+  const endTxt = s.planEnd ? C.parseDate(s.planEnd).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+  $('#plan-summary').textContent = !pl || !s.hasData ? ''
+    : s.maintain ? 'Ya estás en tu meta: ahora el plan es mantener.'
+      : `Empezó el ${longDate(pl.startDate)} con ${kg1(pl.startKg)} kg. A ${kg1(state.profile.rateKgWeek)} kg por semana llega a ${kg1(state.profile.goalKg)} kg el ${endTxt}. Si cambias la meta o el ritmo, el plan vuelve a empezar desde hoy.`;
   $('#version').textContent = `Trampantojo ${VERSION} · ${s.entries.length} ${s.entries.length === 1 ? 'pesada' : 'pesadas'} guardadas en este móvil`;
 }
 
@@ -465,9 +552,133 @@ $('#profile-form').addEventListener('submit', e => {
   e.preventDefault();
   const { data, error } = readProfile(e.currentTarget);
   if (error) { toast(error, true); return; }
-  state.profile = { ...state.profile, ...data };
+  const prev = state.profile;
+  const replan = prev && (prev.goalKg !== data.goalKg || prev.rateKgWeek !== data.rateKgWeek) && state.weights.length > 0;
+  state.profile = { ...prev, ...data };
+  if (replan) state.profile.plan = freshPlan();
   setSexClass();
-  if (persist('Datos guardados.')) render();
+  if (persist(replan ? 'Datos guardados. Tu plan empieza de nuevo hoy.' : 'Datos guardados.')) render();
+});
+
+function freshPlan() {
+  const s = C.summarize(state, today());
+  return { startDate: today(), startKg: Math.round((s.trendKg ?? s.latest?.kg) * 10) / 10 };
+}
+
+$('#plan-restart').addEventListener('click', () => {
+  if (!state.weights.length) { toast('Apunta primero tu peso de hoy.', true); return; }
+  if (!confirm('Tu plan volverá a empezar hoy, desde tu peso de tendencia. Tus pesadas no se tocan. ¿Seguir?')) return;
+  state.profile.plan = freshPlan();
+  if (persist('Tu plan empieza de nuevo hoy.')) render();
+});
+
+/* ── objetivos intermedios ──────────────────────────────────────────── */
+
+const gdlg = $('#goal-dialog');
+let editingGoal = null;
+
+function goalIdeas(s) {
+  const p = state.profile;
+  const ideas = [];
+  const add = (label, kg, name) => {
+    const r = Math.round(kg * 10) / 10;
+    if (r < s.trendKg - 0.2 && r >= p.goalKg - 0.05 && !ideas.some(i => Math.abs(i.kg - r) < 0.3)) ideas.push({ label, kg: r, name });
+  };
+  add(`−5 % · ${kg1(s.startKg * 0.95)} kg`, s.startKg * 0.95, '−5 %');
+  add(`−10 % · ${kg1(s.startKg * 0.9)} kg`, s.startKg * 0.9, '−10 %');
+  const zone = s.bmiZone?.key || '';
+  if (zone.startsWith('ob')) add(`Salir de la obesidad · ${kg1(C.kgForBmi(29.9, p.heightCm))} kg`, C.kgForBmi(29.9, p.heightCm), 'Adiós obesidad');
+  if (zone === 'sobrepeso' || zone.startsWith('ob')) add(`Peso normal · ${kg1(C.kgForBmi(24.9, p.heightCm))} kg`, C.kgForBmi(24.9, p.heightCm), 'Peso normal');
+  add(`${Math.ceil(s.trendKg - 3)} kg`, Math.ceil(s.trendKg - 3), '');
+  return ideas.slice(0, 4);
+}
+
+function updateMilestoneHint() {
+  const f = $('#goal-form');
+  const hint = $('#goal-dialog-hint');
+  const s = C.summarize(state, today());
+  const kg = num(f.elements.kg.value);
+  const date = f.elements.date.value;
+  const parts = [];
+  if (!Number.isNaN(kg) && s.plan) {
+    const pd = C.planDateForKg(s.plan, state.profile.rateKgWeek, kg);
+    if (pd && pd > today()) parts.push(`Tu plan pasa por ${kg1(kg)} kg el ${longDate(pd)}.`);
+  }
+  if (!Number.isNaN(kg) && date > today() && s.trendKg > kg) {
+    const need = (s.trendKg - kg) / C.daysBetween(today(), date) * 7;
+    parts.push(need > 1 ? `Harían falta ${kg1(need)} kg por semana: es mucho, mejor una fecha más lejana.` : `Hacen falta ${kg1(need)} kg por semana desde hoy.`);
+  }
+  hint.textContent = parts.join(' ');
+}
+
+function openGoal(id) {
+  const f = $('#goal-form');
+  f.reset();
+  $('#goal-error').textContent = '';
+  const s = C.summarize(state, today());
+  const m = id ? state.milestones.find(x => x.id === id) : null;
+  editingGoal = m ? m.id : null;
+  $('#goal-title').textContent = m ? 'Objetivo' : 'Nuevo objetivo';
+  $('#goal-delete-group').hidden = !m;
+  f.elements.name.value = m?.name || '';
+  f.elements.kg.value = m ? kg1(m.kg) : '';
+  f.elements.date.value = m?.date || '';
+  f.elements.date.min = C.addDays(today(), 1);
+  const ideas = $('#goal-ideas');
+  ideas.replaceChildren();
+  const list = m || !s.hasData ? [] : goalIdeas(s);
+  $('#goal-ideas-label').hidden = !list.length;
+  list.forEach(idea => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn tinted small';
+    b.textContent = idea.label;
+    b.addEventListener('click', () => {
+      f.elements.kg.value = kg1(idea.kg);
+      if (idea.name && !f.elements.name.value) f.elements.name.value = idea.name;
+      const pd = C.planDateForKg(s.plan, state.profile.rateKgWeek, idea.kg);
+      if (!f.elements.date.value) f.elements.date.value = pd && pd > today() ? pd : C.addDays(today(), 28);
+      updateMilestoneHint();
+    });
+    ideas.appendChild(b);
+  });
+  updateMilestoneHint();
+  gdlg.showModal();
+}
+
+$('#goals').addEventListener('click', e => {
+  const row = e.target.closest('[data-goal]');
+  if (!row) return;
+  if (!state.weights.length) { toast('Apunta primero tu peso de hoy.', true); return; }
+  openGoal(row.dataset.goal || null);
+});
+$('#goal-cancel').addEventListener('click', () => gdlg.close());
+gdlg.addEventListener('click', e => { if (e.target === gdlg) gdlg.close(); });
+$('#goal-form').addEventListener('input', updateMilestoneHint);
+
+$('#goal-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.currentTarget;
+  const err = $('#goal-error');
+  const s = C.summarize(state, today());
+  const name = f.elements.name.value.trim().slice(0, 24);
+  const kg = num(f.elements.kg.value);
+  const date = f.elements.date.value;
+  if (Number.isNaN(kg) || kg < 30 || kg > 300) { err.textContent = 'Escribe el peso del objetivo en kilos, por ejemplo 88.'; return; }
+  if (!editingGoal && kg >= s.trendKg) { err.textContent = `Ese peso ya lo tienes: tu tendencia está en ${kg1(s.trendKg)} kg.`; return; }
+  if (!date || (!editingGoal && date <= today())) { err.textContent = 'Elige una fecha a partir de mañana.'; return; }
+  const id = editingGoal || `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  state.milestones = [...(state.milestones || []).filter(x => x.id !== id), { id, name, kg, date }];
+  if (persist(editingGoal ? 'Objetivo guardado.' : 'Objetivo añadido: míralo en la gráfica.')) { gdlg.close(); render(); }
+});
+
+$('#goal-delete').addEventListener('click', () => {
+  if (!editingGoal) return;
+  const m = state.milestones.find(x => x.id === editingGoal);
+  const label = m?.name || `${kg1(m?.kg)} kg`;
+  if (!confirm(`¿Borrar el objetivo «${label}»?`)) return;
+  state.milestones = state.milestones.filter(x => x.id !== editingGoal);
+  if (persist('Objetivo borrado.')) { gdlg.close(); render(); }
 });
 
 /* ── hábitos ────────────────────────────────────────────────────────── */
@@ -596,7 +807,7 @@ function startWelcome() {
     if (Number.isNaN(kg) || kg < 25 || kg > 350) { err.textContent = 'Escribe tu peso de hoy en kilos, por ejemplo 84,6.'; return; }
     const { data, error } = readProfile(f);
     if (error) { err.textContent = error; return; }
-    state.profile = { ...data, createdAt: today() };
+    state.profile = { ...data, createdAt: today(), plan: { startDate: today(), startKg: kg } };
     upsertEntry({ date: today(), kg });
     setSexClass();
     if (persist(`${data.sex === 'm' ? 'Bienvenida' : 'Bienvenido'}, ${data.name}. Mañana, otra vez a la báscula.`)) {

@@ -250,6 +250,55 @@ export function suggestActivity(habits) {
   return keys[Math.min(score, 4)];
 }
 
+/* ── tu plan y tus objetivos ────────────────────────────────────────── */
+
+/* El plan es la recta que baja desde donde empezaste, al ritmo que elegiste,
+   hasta la meta (y ahí se queda). Si tu tendencia va por debajo, vas por
+   delante; por encima, vas por detrás. El carril es ±PLAN_LANE kg: la
+   tendencia todavía se mueve unas décimas, y eso no es ni ir bien ni mal. */
+export const PLAN_LANE = 0.5;
+
+export function planKgAt(plan, rateKgWeek, goalKg, date) {
+  if (!plan) return null;
+  const d = daysBetween(plan.startDate, date);
+  if (d < 0) return null;
+  return Math.max(goalKg, plan.startKg - rateKgWeek / 7 * d);
+}
+
+// Día en que el plan pasa por `kg` (o null si el plan nunca llega ahí).
+export function planDateForKg(plan, rateKgWeek, kg) {
+  if (!plan) return null;
+  if (kg >= plan.startKg) return plan.startDate;
+  if (!(rateKgWeek > 0)) return null;
+  return addDays(plan.startDate, Math.ceil((plan.startKg - kg) / (rateKgWeek / 7)));
+}
+
+export function paceStatus(trendKg, planKg) {
+  if (planKg == null) return null;
+  const diff = trendKg - planKg;            // + = por encima del plan (detrás)
+  if (diff <= -PLAN_LANE) return { status: 'ahead', diff };
+  if (diff >= PLAN_LANE) return { status: 'behind', diff };
+  return { status: 'on', diff };
+}
+
+/* Un objetivo intermedio: un peso para una fecha («88 kg para Navidad»).
+   Conseguido = la tendencia bajó hasta él en algún momento antes de la fecha.
+   Si la fecha aún no ha llegado, se mira a dónde llegarás a tu ritmo real. */
+export function milestoneStatus(m, s) {
+  const reachedOn = (s.daily || []).find(d => d.date <= m.date && d.trend <= m.kg + 0.05)?.date;
+  if (reachedOn) return { status: 'conseguido', reachedOn };
+  if (m.date <= s.today) {
+    const at = (s.daily || []).find(d => d.date === m.date)?.trend ?? s.trendKg;
+    return { status: 'pasado', short: at - m.kg };
+  }
+  const days = daysBetween(s.today, m.date);
+  const left = s.trendKg - m.kg;
+  const needed = left / days * 7;           // kg por semana que hacen falta
+  if (!s.rate) return { status: 'sin-datos', days, left, needed };
+  const projected = s.trendKg + s.rate.perWeek / 7 * days;
+  return { status: projected <= m.kg + 0.05 ? 'en-camino' : 'detras', days, left, needed, projected };
+}
+
 /* ── el resumen que pinta la pantalla ───────────────────────────────── */
 
 export function summarize(state, today = todayISO()) {
@@ -288,8 +337,16 @@ export function summarize(state, today = todayISO()) {
   s.target = targetKcal({ tdee: s.tdee, rateKgWeek: profile.rateKgWeek, sex: profile.sex, maintain: s.maintain });
 
   s.rate = rateKgPerWeek(entries, last.date);
+  s.plan = profile.plan || { startDate: entries[0].date, startKg: entries[0].kg };
+  s.planKgToday = planKgAt(s.plan, profile.rateKgWeek, profile.goalKg, today);
+  s.planEnd = planDateForKg(s.plan, profile.rateKgWeek, profile.goalKg);
+  s.pace = s.maintain ? null : paceStatus(s.trendKg, s.planKgToday);
   s.projection = projectGoal({ trendKg: s.trendKg, goalKg: profile.goalKg, perWeek: s.rate?.perWeek ?? null, fromDate: today });
   s.weekly = weeklyChanges(daily);
+  s.milestones = [...(state.milestones || [])]
+    .sort((x, y) => x.date < y.date ? -1 : 1)
+    .map(m => ({ ...m, ...milestoneStatus(m, s) }));
+  s.nextMilestone = s.milestones.find(m => m.status !== 'conseguido' && m.date > today) || null;
 
   // medidas: la última de cada una
   const lastWith = key => [...entries].reverse().find(e => e[key] > 0)?.[key];

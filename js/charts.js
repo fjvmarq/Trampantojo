@@ -5,7 +5,7 @@
    discreta, una etiqueta sólo donde importa (el último valor) y el resto
    en el recuadro que sale al tocar. */
 
-import { addDays, daysBetween, parseDate } from './calc.js?v=0.1.0';
+import { addDays, daysBetween, parseDate, planKgAt, PLAN_LANE } from './calc.js?v=0.2.2';
 
 const NS = 'http://www.w3.org/2000/svg';
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -34,6 +34,12 @@ export function shortDate(iso) {
 
 export function longDate(iso) {
   return parseDate(iso).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+// Día en que el plan llega a la meta y se queda plano (el codo del carril).
+function planKinkDate(plan, rateKgWeek, goalKg) {
+  if (!plan || !(rateKgWeek > 0) || plan.startKg <= goalKg) return null;
+  return addDays(plan.startDate, Math.ceil((plan.startKg - goalKg) / (rateKgWeek / 7)));
 }
 
 function niceStep(range, target) {
@@ -71,9 +77,11 @@ function showTip(container, tip, lines, x, y) {
 /* ── evolución del peso ─────────────────────────────────────────────── */
 
 /* opts: daily (serie diaria con trend y kg|null), goalKg, healthy [lo, hi],
-         rangeDays (null = todo), perWeek (para la proyección), compact */
+         rangeDays (null = todo), perWeek (para la proyección), compact,
+         plan + rateKgWeek (el carril de tu plan), milestones (objetivos con estado) */
 export function weightChart(container, opts) {
-  const { daily, goalKg, healthy, rangeDays, perWeek, compact } = opts;
+  const { daily, goalKg, healthy, rangeDays, perWeek, compact, plan, rateKgWeek } = opts;
+  const milestones = opts.milestones || [];
   container.replaceChildren();
   container.classList.add('chart');
   if (!daily?.length) {
@@ -91,7 +99,14 @@ export function weightChart(container, opts) {
 
   const lastTrend = vis[vis.length - 1].trend;
   const projecting = !compact && perWeek != null && perWeek < -0.05 && lastTrend - goalKg > 0.25;
-  const future = projecting ? Math.max(7, Math.round(span * 0.25)) : 0;
+  let future = projecting ? Math.max(7, Math.round(span * 0.25)) : 0;
+  // el próximo objetivo siempre entra en el gráfico (hasta seis meses vista):
+  // es lo que responde a «¿voy a buen ritmo?»
+  const nextM = compact ? null : milestones.find(mm => mm.date > lastDate && mm.status !== 'conseguido');
+  if (nextM) {
+    const need = daysBetween(lastDate, nextM.date) + 4;
+    if (need <= 183) future = Math.max(future, need);
+  }
   const endDate = addDays(lastDate, future);
   const projEnd = projecting ? Math.max(goalKg, lastTrend + perWeek / 7 * future) : null;
 
@@ -99,9 +114,15 @@ export function weightChart(container, opts) {
   const vals = [];
   vis.forEach(d => { vals.push(d.trend); if (d.kg != null) vals.push(d.kg); });
   if (projEnd != null) vals.push(projEnd);
+  const planAt = date => planKgAt(plan, rateKgWeek, goalKg, date);
+  const laneFrom = plan && plan.startDate > vis[0].date ? plan.startDate : vis[0].date;
+  const laneOn = plan && laneFrom <= endDate && planAt(laneFrom) != null;
+  if (laneOn) [laneFrom, endDate].forEach(d => { const v = planAt(d); vals.push(v + PLAN_LANE, v - PLAN_LANE); });
+  const msIn = milestones.filter(mm => mm.date >= vis[0].date && mm.date <= endDate);
+  msIn.forEach(mm => vals.push(mm.kg));
   let lo = Math.min(...vals), hi = Math.max(...vals);
   const dataSpan = Math.max(hi - lo, 1);
-  const goalIn = goalKg >= lo - dataSpan * 0.8 && goalKg <= hi + dataSpan * 0.8;
+  const goalIn = goalKg >= lo - dataSpan * 0.5 && goalKg <= hi + dataSpan * 0.5;
   if (goalIn) { lo = Math.min(lo, goalKg); hi = Math.max(hi, goalKg); }
   const pad = Math.max(0.3, (hi - lo) * 0.08);
   lo -= pad; hi += pad;
@@ -138,12 +159,11 @@ export function weightChart(container, opts) {
     text(svg, m.l - 6, y + 4, step < 1 ? kg1(v) : String(Math.round(v)), 'axis', 'end');
   }
 
-  // eje de fechas: 3–5 marcas repartidas
-  const nTicks = Math.min(compact || W < 420 ? 3 : 5, span + 1);
+  // eje de fechas: 3–5 marcas repartidas por todo el eje (futuro incluido)
+  const nTicks = Math.min(compact || W < 420 ? 3 : 5, totalDays + 1);
   for (let i = 0; i < nTicks; i++) {
-    const d = addDays(vis[0].date, Math.round(span * i / Math.max(1, nTicks - 1)));
-    const x = X(d);
-    text(svg, x, H - 6, shortDate(d), 'axis', i === 0 ? 'start' : i === nTicks - 1 && !future ? 'end' : 'middle');
+    const d = addDays(vis[0].date, Math.round(totalDays * i / Math.max(1, nTicks - 1)));
+    text(svg, X(d), H - 6, shortDate(d), 'axis', i === 0 ? 'start' : i === nTicks - 1 ? 'end' : 'middle');
   }
   el('line', { x1: m.l, x2: m.l + iw, y1: m.t + ih, y2: m.t + ih, class: 'baseline' }, svg);
 
@@ -159,6 +179,18 @@ export function weightChart(container, opts) {
     text(svg, m.l + iw + 6, gy + 14, `${kg1(goalKg)} ↓`, 'goal-label');
   }
 
+  // el carril de tu plan: ±PLAN_LANE kg alrededor de la recta
+  if (laneOn) {
+    const pts = [laneFrom];
+    const kink = planKinkDate(plan, rateKgWeek, goalKg);
+    if (kink && kink > laneFrom && kink < endDate) pts.push(kink);
+    pts.push(endDate);
+    const up = pts.map(d => `${X(d).toFixed(1)},${Y(planAt(d) + PLAN_LANE).toFixed(1)}`);
+    const down = pts.slice().reverse().map(d => `${X(d).toFixed(1)},${Y(planAt(d) - PLAN_LANE).toFixed(1)}`);
+    el('polygon', { points: [...up, ...down].join(' '), class: 'lane' }, svg);
+    el('polyline', { points: pts.map(d => `${X(d).toFixed(1)},${Y(planAt(d)).toFixed(1)}`).join(' '), class: 'plan-line' }, svg);
+  }
+
   // pesadas del día
   const measured = vis.filter(d => d.kg != null);
   const r = measured.length <= 45 ? 3.5 : 2.5;
@@ -172,6 +204,14 @@ export function weightChart(container, opts) {
   if (projecting) {
     el('path', { d: `M${X(lastDate)},${Y(lastTrend)}L${X(endDate)},${Y(projEnd)}`, class: 'projection' }, svg);
   }
+
+  // objetivos intermedios: un rombo en su fecha y su peso
+  msIn.forEach(mm => {
+    const x = X(mm.date), y = Y(mm.kg), k = 6;
+    el('path', { d: `M${x},${y - k}L${x + k},${y}L${x},${y + k}L${x - k},${y}Z`, class: `ms ms-${mm.status}` }, svg);
+    const lx = Math.min(Math.max(x, m.l + 24), m.l + iw - 4);
+    text(svg, lx, y - k - 5, mm.name || `${kg1(mm.kg)} kg`, 'ms-label', 'middle');
+  });
 
   // último valor
   const ex = X(lastDate), ey = Y(lastTrend);
@@ -196,9 +236,11 @@ export function weightChart(container, opts) {
     cl.setAttribute('x1', x); cl.setAttribute('x2', x);
     cd.setAttribute('cx', x); cd.setAttribute('cy', y);
     cursor.setAttribute('visibility', 'visible');
+    const pl = laneOn ? planAt(d.date) : null;
     showTip(container, tip, [
       ['tip-value', d.kg != null ? `${kg1(d.kg)} kg` : 'Sin pesar'],
       ['tip-sub', `Tendencia ${kg1(d.trend)} kg`],
+      ...(pl != null ? [['tip-sub', `Plan ${kg1(pl)} kg`]] : []),
       ['tip-date', longDate(d.date)],
     ], x, Math.min(y, d.kg != null ? Y(d.kg) : y));
   };
@@ -223,7 +265,10 @@ export function weightChart(container, opts) {
   if (!compact) {
     const legend = document.createElement('div');
     legend.className = 'legend';
-    [['key-dot', 'Peso del día'], ['key-line', 'Tendencia'], ['key-dash', 'Meta'],
+    [['key-dot', 'Peso del día'], ['key-line', 'Tendencia'],
+      ...(laneOn ? [['key-lane', 'Tu plan']] : []),
+      ...(msIn.length ? [['key-ms', 'Objetivo']] : []),
+      ['key-dash', 'Meta'],
       ...(projecting ? [['key-proj', 'A este ritmo']] : [])].forEach(([k, label]) => {
       const s = document.createElement('span');
       const sw = document.createElement('i');

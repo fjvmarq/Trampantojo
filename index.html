@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="css/app.css?v=0.1.0">
+  <link rel="stylesheet" href="css/app.css?v=0.2.2">
 </head>
 <body>
   <div id="app">
@@ -85,7 +85,10 @@
           <div class="chart-box" id="chart-evo"></div>
           <button class="row-link" data-go="registro">Ver los datos uno a uno</button>
         </div>
-        <div class="card">
+        <p class="section-label">Objetivos intermedios</p>
+        <ul class="group log" id="goals"></ul>
+        <p class="section-foot">Un peso y una fecha («88 kg para Navidad»). Aparecen en la gráfica como un rombo, y el carril azul es tu plan: si tu línea va por dentro o por debajo, vas a buen ritmo.</p>
+        <div class="card spaced">
           <p class="card-label accent">Ritmo semana a semana</p>
           <p class="card-sub">Cuánto ha bajado o subido tu tendencia cada semana.</p>
           <div class="chart-box" id="chart-rate"></div>
@@ -138,6 +141,12 @@
           <p class="section-foot" id="activity-hint"></p>
           <button type="submit" class="btn primary block">Guardar mis datos</button>
         </form>
+
+        <p class="section-label">Tu plan</p>
+        <div class="group">
+          <button type="button" class="item action" id="plan-restart"><span class="item-title">Empezar el plan de nuevo desde hoy</span><span class="chev" aria-hidden="true"></span></button>
+        </div>
+        <p class="section-foot" id="plan-summary"></p>
 
         <form id="habits-form" autocomplete="off">
           <p class="section-label" id="habitos">Tus hábitos</p>
@@ -288,6 +297,30 @@
     </form>
   </dialog>
 
+  <!-- ── Un objetivo intermedio: hoja inferior ───────────────── -->
+  <dialog id="goal-dialog" class="sheet">
+    <form id="goal-form" autocomplete="off">
+      <div class="sheet-grabber" aria-hidden="true"></div>
+      <div class="sheet-bar">
+        <button type="button" class="bar-btn" id="goal-cancel">Cancelar</button>
+        <h2 id="goal-title">Nuevo objetivo</h2>
+        <button type="submit" class="bar-btn strong">Guardar</button>
+      </div>
+      <div class="group">
+        <label class="item"><span class="item-title">Nombre</span><input name="name" type="text" placeholder="Navidad, verano…" maxlength="24"></label>
+        <label class="item"><span class="item-title">Peso</span><span class="field-unit"><input name="kg" type="text" inputmode="decimal" placeholder="0,0" required><span>kg</span></span></label>
+        <label class="item"><span class="item-title">Fecha</span><input name="date" type="date" required></label>
+      </div>
+      <p class="section-foot" id="goal-dialog-hint"></p>
+      <p class="section-label" id="goal-ideas-label">Ideas</p>
+      <div class="ideas" id="goal-ideas"></div>
+      <p class="error" id="goal-error" role="alert"></p>
+      <div class="group" id="goal-delete-group">
+        <button type="button" class="item action destructive" id="goal-delete"><span class="item-title">Borrar este objetivo</span></button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- ── Aviso de datos ilegibles ─────────────────────────────── -->
   <div id="storage-alert" class="alert" hidden role="alert">
     <p class="message-title">No he podido leer tus datos</p>
@@ -300,6 +333,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.1.0"></script>
+  <script type="module" src="js/app.js?v=0.2.2"></script>
 </body>
 </html>

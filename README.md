@@ -52,6 +52,8 @@ carga, si el service worker está activo y cuántas pesadas hay guardadas.
 | Tendencia | Suavizado doble de Holt (10 % el dato del día, 5 % la pendiente). Una media simple se quedaba ~0,6 kg por detrás al bajar medio kilo a la semana |
 | Ritmo real | Recta de mínimos cuadrados sobre las pesadas de las últimas 3 semanas (mín. 4 pesadas en 7 días) |
 | Fecha de la meta | Kilos que faltan ÷ ritmo real |
+| Tu plan | Recta desde donde empezaste, al ritmo elegido, hasta la meta. En la gráfica es un **carril** de ±0,5 kg: dentro, vas bien; por debajo, por delante; por encima, por detrás. Cambiar la meta o el ritmo lo reinicia desde hoy |
+| Objetivos intermedios | Un peso para una fecha («88 kg para Navidad»): un rombo en la gráfica. **Conseguido** si la tendencia llegó antes de la fecha; si no, se mira a dónde llegas a tu ritmo real y cuántos kg/semana harían falta |
 | IMC y peso saludable | Zonas de la OMS (18,5 – 24,9) |
 | Metabolismo basal | Mifflin-St Jeor |
 | Gasto diario | Basal × actividad (1,2 · 1,375 · 1,55 · 1,725 · 1,9), con sugerencia a partir de tus hábitos |
@@ -77,7 +79,7 @@ python -m http.server 8791
 
 | Fichero | Qué hace |
 |---|---|
-| `index.html` | las cuatro pantallas, la bienvenida y la hoja de corregir |
+| `index.html` | las cuatro pantallas, la bienvenida y las hojas de corregir pesada y de objetivo |
 | `css/app.css` | todo el aspecto: las variables de BIMIO arriba, nada de colores sueltos |
 | `js/calc.js` | los cálculos, sin pantalla (se prueban en `tests.html`) |
 | `js/store.js` | guardar y leer, copias internas, copia en fichero |

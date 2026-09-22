@@ -23,7 +23,7 @@ export const SCHEMA = 1;
 let lastLoad = 'empty';
 
 export function emptyState() {
-  return { schema: SCHEMA, profile: null, habits: {}, weights: [], meta: {} };
+  return { schema: SCHEMA, profile: null, habits: {}, weights: [], milestones: [], meta: {} };
 }
 
 export function migrate(data) {
@@ -34,6 +34,14 @@ export function migrate(data) {
   s.weights = s.weights
     .filter(w => w && typeof w.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(w.date) && Number(w.kg) > 0)
     .map(w => ({ ...w, kg: Number(w.kg) }));
+  if (!Array.isArray(s.milestones)) s.milestones = [];
+  s.milestones = s.milestones.filter(m => m && /^\d{4}-\d{2}-\d{2}$/.test(m.date) && Number(m.kg) > 0)
+    .map(m => ({ ...m, kg: Number(m.kg) }));
+  // el plan empieza, si no se dijo otra cosa, en la primera pesada
+  if (s.profile && !s.profile.plan && s.weights.length) {
+    const first = [...s.weights].sort((a, b) => a.date < b.date ? -1 : 1)[0];
+    s.profile = { ...s.profile, plan: { startDate: first.date, startKg: first.kg } };
+  }
   // (aquí irán los pasos de schema 1 → 2 → …, sin quitar nunca campos que no se conozcan)
   s.schema = SCHEMA;
   return s;

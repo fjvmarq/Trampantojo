@@ -4,7 +4,8 @@
    decide cuál, para que no cambie cada vez que abres la app.
    Tono: de apoyo, nunca de culpa. Un día malo no es un fracaso. */
 
-import { kg1 } from './charts.js?v=0.1.0';
+import { kg1, shortDate } from './charts.js?v=0.2.2';
+import { daysBetween } from './calc.js?v=0.2.2';
 
 const pct1 = v => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(v);
 
@@ -65,6 +66,22 @@ export function messageOfTheDay(s, profile, now = new Date()) {
         add(2, 'Unos días estable',
           'Es normal: el cuerpo se ajusta. Si sigue igual dos semanas más, revisa las raciones o suma pasos.');
       }
+    }
+    const won = (s.milestones || []).find(m => m.status === 'conseguido' && m.reachedOn && daysBetween(m.reachedOn, s.today) <= 7);
+    if (won) {
+      add(9, '¡Objetivo conseguido!', `${won.name ? `«${won.name}»` : `${kg1(won.kg)} kg`}: lo lograste el ${shortDate(won.reachedOn)}. Apúntate el siguiente.`);
+    }
+    const nm = s.nextMilestone;
+    if (nm && nm.days <= 14 && nm.left > 0) {
+      add(5, `Se acerca ${nm.name ? `«${nm.name}»` : 'tu objetivo'}`,
+        nm.status === 'en-camino'
+          ? `Quedan ${nm.days} días y ${kg1(nm.left)} kg. A tu ritmo llegas: sigue igual.`
+          : `Quedan ${nm.days} días y ${kg1(nm.left)} kg: hacen falta ${kg1(nm.needed)} kg por semana. Cada día cuenta.`);
+    }
+    if (s.pace?.status === 'ahead' && n >= 7) {
+      add(4, 'Por delante de tu plan', `Vas ${kg1(-s.pace.diff)} kg mejor de lo previsto. Sin prisa: lo que se baja despacio no vuelve.`);
+    } else if (s.pace?.status === 'behind' && n >= 7) {
+      add(4, 'Un poco por detrás del plan', `Vas ${kg1(s.pace.diff)} kg por encima de lo previsto. No pasa nada: una semana ordenada y vuelves al carril.`);
     }
     add(1, name ? `Hola, ${name}` : 'Hola',
       'Un día bueno no te hace delgado y un día malo no te hace gordo. Lo que cuenta es la línea, y la línea la haces tú.');

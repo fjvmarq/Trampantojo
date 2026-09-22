@@ -18,9 +18,9 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.1.0';
-    import * as S from './js/store.js?v=0.1.0';
-    import { messageOfTheDay } from './js/messages.js?v=0.1.0';
+    import * as C from './js/calc.js?v=0.2.2';
+    import * as S from './js/store.js?v=0.2.2';
+    import { messageOfTheDay } from './js/messages.js?v=0.2.2';
 
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
@@ -86,6 +86,23 @@
     check('sin bajar = estancado', C.projectGoal({ trendKg: 90, goalKg: 80, perWeek: -0.01, fromDate: '2026-09-22' }).status === 'estancado');
     check('más de 2 años = lejos', C.projectGoal({ trendKg: 100, goalKg: 80, perWeek: -0.1, fromDate: '2026-09-22' }).status === 'lejos');
     check('sin ritmo = sin datos', C.projectGoal({ trendKg: 90, goalKg: 80, perWeek: null, fromDate: '2026-09-22' }).status === 'sin-datos');
+
+    // plan y objetivos
+    const plan = { startDate: '2026-09-01', startKg: 100 };
+    check('plan: a 0,5 kg/sem, 14 días después toca 99', near(C.planKgAt(plan, 0.5, 80, '2026-09-15'), 99));
+    check('plan: nunca baja de la meta', C.planKgAt(plan, 1, 99, '2026-12-01') === 99);
+    check('plan: antes de empezar no hay plan', C.planKgAt(plan, 0.5, 80, '2026-08-30') === null);
+    check('plan: pasa por 95 kg a las 10 semanas', C.planDateForKg(plan, 0.5, 95) === C.addDays('2026-09-01', 70));
+    check('ritmo del plan: 0,6 kg mejor = por delante', C.paceStatus(98.4, 99).status === 'ahead');
+    check('ritmo del plan: 0,3 kg arriba = en el carril', C.paceStatus(99.3, 99).status === 'on');
+    check('ritmo del plan: 0,8 kg arriba = por detrás', C.paceStatus(99.8, 99).status === 'behind');
+    const sm = { today: '2026-10-01', trendKg: 96, rate: { perWeek: -0.5 },
+      daily: [{ date: '2026-09-20', trend: 97 }, { date: '2026-10-01', trend: 96 }] };
+    check('objetivo ya tocado = conseguido', C.milestoneStatus({ date: '2026-12-01', kg: 97 }, sm).status === 'conseguido');
+    check('objetivo a tiempo al ritmo real = en camino', C.milestoneStatus({ date: '2026-11-26', kg: 92 }, sm).status === 'en-camino');
+    const tight = C.milestoneStatus({ date: '2026-10-29', kg: 92 }, sm);
+    check('objetivo demasiado cerca = detrás (y dice cuánto hace falta)', tight.status === 'detras' && near(tight.needed, 1, 0.01), JSON.stringify(tight));
+    check('objetivo con la fecha pasada sin tocarlo = pasado', C.milestoneStatus({ date: '2026-09-25', kg: 95 }, sm).status === 'pasado');
 
     // semanas y racha
     const wk = C.weeklyChanges(C.dailySeries(days('2026-07-01', 60, i => 100 - 0.1 * i)));
