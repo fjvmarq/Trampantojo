@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trampantojo · pruebas</title>
+  <style>
+    body { font: 15px/1.4 system-ui, sans-serif; margin: 16px; background: #fcfcfb; color: #0b0b0b; }
+    h1 { font-size: 20px; }
+    li { margin: 2px 0; }
+    .ok { color: #006300; }
+    .ko { color: #b42323; font-weight: 600; }
+    #sum { font-weight: 700; font-size: 17px; }
+  </style>
+</head>
+<body>
+  <h1>Pruebas de los cálculos</h1>
+  <p id="sum">Ejecutando…</p>
+  <ul id="out"></ul>
+  <script type="module">
+    import * as C from './js/calc.js?v=0.1.0';
+    import * as S from './js/store.js?v=0.1.0';
+    import { messageOfTheDay } from './js/messages.js?v=0.1.0';
+
+    const out = document.getElementById('out');
+    let pass = 0, fail = 0;
+    const near = (a, b, tol = 0.01) => Math.abs(a - b) <= tol;
+    function check(name, cond, detail = '') {
+      const li = document.createElement('li');
+      li.className = cond ? 'ok' : 'ko';
+      li.textContent = (cond ? '✓ ' : '✗ ') + name + (cond ? '' : '  → ' + detail);
+      out.appendChild(li);
+      cond ? pass++ : fail++;
+    }
+    const days = (from, n, f) => Array.from({ length: n }, (_, i) => ({ date: C.addDays(from, i), kg: f(i) }));
+
+    // fechas
+    check('días entre fechas cruzando el cambio de hora de marzo', C.daysBetween('2026-03-28', '2026-03-30') === 2);
+    check('días entre fechas cruzando el cambio de hora de octubre', C.daysBetween('2026-10-24', '2026-10-26') === 2);
+    check('sumar días pasa de mes', C.addDays('2026-02-27', 2) === '2026-03-01');
+    check('sumar días en año bisiesto', C.addDays('2024-02-28', 1) === '2024-02-29');
+    check('edad la víspera del cumpleaños', C.ageOn('1980-09-23', '2026-09-22') === 45);
+    check('edad el día del cumpleaños', C.ageOn('1980-09-22', '2026-09-22') === 46);
+
+    // composición
+    check('IMC 90 kg, 180 cm = 27,78', near(C.bmi(90, 180), 27.78));
+    check('IMC 24,9 es peso normal', C.bmiZone(24.9).key === 'normal');
+    check('IMC 25 es sobrepeso', C.bmiZone(25).key === 'sobrepeso');
+    check('IMC 18,4 es bajo peso', C.bmiZone(18.4).key === 'bajo');
+    check('IMC 40 es obesidad III', C.bmiZone(40).key === 'ob3');
+    const hr = C.healthyRange(180);
+    check('peso saludable 180 cm ≈ 59,9–80,7', near(hr[0], 59.94) && near(hr[1], 80.68), hr.join(' – '));
+    check('cintura/altura 0,49 saludable', C.whtrZone(0.49).status === 'good');
+    check('cintura/altura 0,55 riesgo aumentado', C.whtrZone(0.55).status === 'warning');
+    const bf = C.navyBodyFat({ sex: 'h', cm: 178, waist: 90, neck: 38 });
+    check('grasa (Marina) hombre 178/90/38 ≈ 20,2 %', near(bf, 20.2, 0.2), bf);
+    check('grasa mujer sin cadera = sin dato', C.navyBodyFat({ sex: 'm', cm: 165, waist: 80, neck: 33 }) === null);
+
+    // energía
+    check('basal hombre 90 kg 180 cm 45 años = 1805', near(C.bmr({ sex: 'h', kg: 90, cm: 180, age: 45 }), 1805));
+    check('basal mujer 70 kg 165 cm 30 años = 1420,25', near(C.bmr({ sex: 'm', kg: 70, cm: 165, age: 30 }), 1420.25));
+    check('gasto moderado = basal × 1,55', near(C.tdee(1805, 'moderado'), 2797.75));
+    const t1 = C.targetKcal({ tdee: 2800, rateKgWeek: 0.5, sex: 'h' });
+    check('objetivo 0,5 kg/sem = 550 kcal menos', near(t1.kcal, 2250) && !t1.clipped, JSON.stringify(t1));
+    const t2 = C.targetKcal({ tdee: 1800, rateKgWeek: 1, sex: 'm' });
+    check('objetivo nunca baja del mínimo (1200 mujer)', t2.kcal === 1200 && t2.clipped && near(t2.effectiveRate, 0.545, 0.001), JSON.stringify(t2));
+    check('en la meta: objetivo = gasto', C.targetKcal({ tdee: 2500, rateKgWeek: 0.5, sex: 'h', maintain: true }).kcal === 2500);
+
+    // tendencia
+    const d = C.dailySeries([{ date: '2026-09-01', kg: 100 }, { date: '2026-09-03', kg: 98 }]);
+    check('serie diaria rellena el hueco', d.length === 3 && d[1].kg === null && d[1].measured === false);
+    check('la tendencia usa el día rellenado (99,71)', near(d[2].trend, 99.71), d.map(x => x.trend).join(', '));
+    const lin = days('2026-08-01', 22, i => 100 - 0.1 * i);
+    const linD = C.dailySeries(days('2026-06-01', 90, i => 100 - 0.07 * i));
+    const lag = linD[linD.length - 1].trend - linD[linD.length - 1].kg;
+    check('la tendencia no se queda atrás en una bajada constante (< 0,1 kg)', Math.abs(lag) < 0.1, lag.toFixed(3));
+    const r = C.rateKgPerWeek(lin, lin[lin.length - 1].date);
+    check('ritmo de una bajada de 0,1 kg/día = −0,7 kg/sem', r && near(r.perWeek, -0.7, 0.001), JSON.stringify(r));
+    check('ritmo con 3 pesadas = sin dato', C.rateKgPerWeek(lin.slice(-3), lin[lin.length - 1].date) === null);
+    check('ritmo con menos de una semana = sin dato', C.rateKgPerWeek(lin.slice(-6), lin[lin.length - 1].date) === null);
+
+    // proyección
+    const p1 = C.projectGoal({ trendKg: 90, goalKg: 80, perWeek: -0.5, fromDate: '2026-09-22' });
+    check('10 kg a 0,5 kg/sem = 140 días', p1.status === 'ok' && p1.days === 140 && p1.date === C.addDays('2026-09-22', 140), JSON.stringify(p1));
+    check('en la meta = conseguido', C.projectGoal({ trendKg: 80.2, goalKg: 80, perWeek: -0.5, fromDate: '2026-09-22' }).status === 'conseguido');
+    check('sin bajar = estancado', C.projectGoal({ trendKg: 90, goalKg: 80, perWeek: -0.01, fromDate: '2026-09-22' }).status === 'estancado');
+    check('más de 2 años = lejos', C.projectGoal({ trendKg: 100, goalKg: 80, perWeek: -0.1, fromDate: '2026-09-22' }).status === 'lejos');
+    check('sin ritmo = sin datos', C.projectGoal({ trendKg: 90, goalKg: 80, perWeek: null, fromDate: '2026-09-22' }).status === 'sin-datos');
+
+    // semanas y racha
+    const wk = C.weeklyChanges(C.dailySeries(days('2026-07-01', 60, i => 100 - 0.1 * i)));
+    check('cambios semanales: 8 semanas, todas bajando', wk.length === 8 && wk.every(w => w.change < 0), JSON.stringify(wk.map(w => w.change.toFixed(2))));
+    const e3 = [{ date: '2026-09-20', kg: 1 }, { date: '2026-09-21', kg: 1 }, { date: '2026-09-22', kg: 1 }];
+    check('racha de 3 días', C.streak(e3, '2026-09-22') === 3);
+    check('racha cuenta hasta ayer si hoy no toca aún', C.streak(e3.slice(0, 2), '2026-09-22') === 2);
+    check('racha se corta en un hueco', C.streak([{ date: '2026-09-18', kg: 1 }, ...e3.slice(1)], '2026-09-22') === 2);
+
+    // hábitos
+    check('4 días × 45 min = moderada', C.suggestActivity({ exerciseDays: 4, exerciseMinutes: 45 }) === 'moderado');
+    check('… y con trabajo físico = alta', C.suggestActivity({ exerciseDays: 4, exerciseMinutes: 45, work: 'movimiento' }) === 'activo');
+    check('sin ejercicio = sedentaria', C.suggestActivity({ exerciseDays: 0 }) === 'sedentario');
+
+    // almacenamiento
+    const m = S.migrate({ weights: [{ date: '2026-09-01', kg: '90.5' }, { date: 'mal', kg: 3 }, { date: '2026-09-02', kg: 0 }], extra: 'se queda' });
+    check('migrar limpia pesadas inválidas y convierte a número', m.weights.length === 1 && m.weights[0].kg === 90.5);
+    check('migrar no pierde campos desconocidos', m.extra === 'se queda');
+    let threw = false;
+    try { S.parseBackup('{"hola":1}'); } catch { threw = true; }
+    check('una copia ajena se rechaza', threw);
+    const round = S.parseBackup(S.exportText({ ...S.emptyState(), weights: [{ date: '2026-09-01', kg: 90 }] }));
+    check('copia de ida y vuelta', round.weights.length === 1 && round.weights[0].kg === 90);
+    threw = false;
+    try { S.parseBackup(JSON.stringify({ app: 'Trampantojo', schema: 99, data: {} })); } catch { threw = true; }
+    check('una copia de una versión más nueva se rechaza', threw);
+
+    // resumen y mensaje
+    const profile = { name: 'Francis Martínez', sex: 'h', birthDate: '1980-05-10', heightCm: 180, goalKg: 82, rateKgWeek: 0.5, activity: 'ligero' };
+    const st = { ...S.emptyState(), profile, weights: days('2026-08-20', 34, i => 95 - 0.08 * i + (i % 3 ? 0.3 : -0.3)) };
+    const s = C.summarize(st, '2026-09-22');
+    check('resumen: IMC, objetivo, ritmo y proyección presentes', s.bmi > 0 && s.target.kcal > 0 && s.rate && s.projection?.status, JSON.stringify({ bmi: s.bmi, rate: s.rate, pr: s.projection }));
+    check('resumen: la tendencia está entre el inicio y el último peso', s.trendKg < s.startKg && s.trendKg > 91, s.trendKg);
+    const msg = messageOfTheDay(s, profile, new Date(2026, 8, 22, 9));
+    check('mensaje del día con título y texto', !!(msg?.title && msg?.text), JSON.stringify(msg));
+    const msg0 = messageOfTheDay(C.summarize({ ...S.emptyState(), profile }, '2026-09-22'), profile);
+    check('mensaje sin datos = empezar', msg0.title === 'Empieza hoy');
+
+    document.getElementById('sum').textContent = fail ? `✗ ${fail} fallan de ${pass + fail}` : `✓ ${pass} de ${pass} bien`;
+    document.getElementById('sum').className = fail ? 'ko' : 'ok';
+    document.title = fail ? `FALLAN ${fail}` : `OK ${pass}`;
+  </script>
+</body>
+</html>

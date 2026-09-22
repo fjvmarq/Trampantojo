@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Trampantojo</title>
+  <meta name="description" content="Tu peso real, sin trampas: registro diario, tendencia y ayuda para los antojos.">
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/app.css?v=0.1.0">
+</head>
+<body>
+  <div id="app">
+    <!-- Cabecera al estilo de BIMIO: el logo de la app a la izquierda, el título y una línea debajo -->
+    <header class="app-header">
+      <img class="app-mark" src="icons/icon.svg" alt="" width="44" height="44">
+      <div class="app-header-text">
+        <h1 id="screen-title">Trampantojo</h1>
+        <p class="app-header-sub" id="today-label"></p>
+      </div>
+    </header>
+
+    <main>
+      <!-- ── Hoy ─────────────────────────────────────────────── -->
+      <section id="screen-hoy" class="screen" data-title="Hoy">
+        <form class="card weigh" id="weigh-form" autocomplete="off">
+          <label for="weigh-kg" class="card-label">Peso de hoy</label>
+          <div class="weigh-row">
+            <div class="field-unit big">
+              <input id="weigh-kg" name="kg" type="text" inputmode="decimal" placeholder="0,0" aria-describedby="weigh-hint">
+              <span>kg</span>
+            </div>
+            <button type="submit" class="btn primary">Guardar</button>
+          </div>
+          <p class="card-foot" id="weigh-hint"></p>
+          <details class="more">
+            <summary>Añadir medidas</summary>
+            <div class="measures">
+              <label>Cintura<span class="field-unit"><input name="waist" type="text" inputmode="decimal" placeholder="—"><span>cm</span></span></label>
+              <label>Cuello<span class="field-unit"><input name="neck" type="text" inputmode="decimal" placeholder="—"><span>cm</span></span></label>
+              <label class="only-m">Cadera<span class="field-unit"><input name="hip" type="text" inputmode="decimal" placeholder="—"><span>cm</span></span></label>
+            </div>
+            <p class="card-foot">Cintura a la altura del ombligo, sin apretar. Con cintura y cuello calculo tu % de grasa.</p>
+          </details>
+        </form>
+
+        <div class="card message" id="message-card">
+          <p class="card-label accent">Para hoy</p>
+          <p class="message-title" id="message-title"></p>
+          <p class="message-text" id="message-text"></p>
+        </div>
+
+        <div class="card hero" id="hero-card">
+          <p class="card-label accent">Peso de tendencia</p>
+          <p class="hero-value"><span id="hero-kg">—</span><span class="unit">kg</span></p>
+          <p class="hero-delta" id="hero-delta"></p>
+          <div class="chart-box" id="chart-hoy"></div>
+          <button class="row-link" data-go="evolucion">Ver toda la evolución</button>
+        </div>
+
+        <p class="section-label" id="tiles-label">Tus números</p>
+        <div class="tiles" id="tiles"></div>
+
+        <div class="card nudge" id="habits-nudge" hidden>
+          <p class="message-title">Cuéntame tus hábitos</p>
+          <p class="message-text">Con tu ejercicio y cómo comes, calculo mejor lo que gastas.</p>
+          <button class="btn tinted" data-go="perfil" data-focus="habitos">Rellenar hábitos</button>
+        </div>
+      </section>
+
+      <!-- ── Evolución ───────────────────────────────────────── -->
+      <section id="screen-evolucion" class="screen" data-title="Evolución" hidden>
+        <div class="segmented" role="radiogroup" aria-label="Periodo">
+          <button type="button" role="radio" data-range="30">30 días</button>
+          <button type="button" role="radio" data-range="90">90 días</button>
+          <button type="button" role="radio" data-range="365">1 año</button>
+          <button type="button" role="radio" data-range="0">Todo</button>
+        </div>
+        <div class="card">
+          <p class="card-label accent">Evolución del peso</p>
+          <p class="card-sub" id="evo-sub"></p>
+          <div class="chart-box" id="chart-evo"></div>
+          <button class="row-link" data-go="registro">Ver los datos uno a uno</button>
+        </div>
+        <div class="card">
+          <p class="card-label accent">Ritmo semana a semana</p>
+          <p class="card-sub">Cuánto ha bajado o subido tu tendencia cada semana.</p>
+          <div class="chart-box" id="chart-rate"></div>
+        </div>
+        <p class="section-label">Tu salud en números</p>
+        <dl class="group facts" id="facts"></dl>
+        <p class="section-foot">Orientativo. Trampantojo te ayuda a ordenarte, no sustituye a tu médico.</p>
+      </section>
+
+      <!-- ── Registro ────────────────────────────────────────── -->
+      <section id="screen-registro" class="screen" data-title="Registro" hidden>
+        <button class="btn tinted block" id="add-past">Añadir otro día</button>
+        <p class="section-label">Tus pesadas</p>
+        <ul class="group log" id="log"></ul>
+        <p class="section-foot" id="log-foot">Toca una pesada para corregirla o borrarla.</p>
+        <p class="empty" id="log-empty" hidden>Todavía no has apuntado ningún peso.</p>
+      </section>
+
+      <!-- ── Perfil ──────────────────────────────────────────── -->
+      <section id="screen-perfil" class="screen" data-title="Perfil" hidden>
+        <form id="profile-form" autocomplete="off">
+          <p class="section-label">Tus datos</p>
+          <div class="group">
+            <label class="item"><span class="item-title">Nombre</span><input name="name" type="text" autocomplete="given-name" placeholder="Tu nombre" required></label>
+            <div class="item">
+              <span class="item-title">Sexo<small>Cambia la fórmula del gasto</small></span>
+              <div class="segmented compact" role="radiogroup" aria-label="Sexo">
+                <label><input type="radio" name="sex" value="h" required><span>Hombre</span></label>
+                <label><input type="radio" name="sex" value="m"><span>Mujer</span></label>
+              </div>
+            </div>
+            <label class="item"><span class="item-title">Nacimiento</span><input name="birthDate" type="date" required></label>
+            <label class="item"><span class="item-title">Altura</span><span class="field-unit"><input name="heightCm" type="text" inputmode="numeric" placeholder="0" required><span>cm</span></span></label>
+          </div>
+
+          <p class="section-label">Tu meta</p>
+          <div class="group">
+            <label class="item"><span class="item-title">Peso objetivo</span><span class="field-unit"><input name="goalKg" type="text" inputmode="decimal" placeholder="0,0" required><span>kg</span></span></label>
+            <label class="item"><span class="item-title">Ritmo</span>
+              <select name="rateKgWeek">
+                <option value="0.25">Suave · 0,25 kg/sem</option>
+                <option value="0.5">Normal · 0,5 kg/sem</option>
+                <option value="0.75">Rápido · 0,75 kg/sem</option>
+                <option value="1">Máximo · 1 kg/sem</option>
+              </select>
+            </label>
+            <label class="item"><span class="item-title">Actividad</span><select name="activity"></select></label>
+          </div>
+          <p class="section-foot" id="goal-hint"></p>
+          <p class="section-foot" id="activity-hint"></p>
+          <button type="submit" class="btn primary block">Guardar mis datos</button>
+        </form>
+
+        <form id="habits-form" autocomplete="off">
+          <p class="section-label" id="habitos">Tus hábitos</p>
+          <div class="group">
+            <label class="item"><span class="item-title">Ejercicio</span><input name="exerciseType" type="text" placeholder="Andar, pádel…"></label>
+            <label class="item"><span class="item-title">Días por semana</span><input name="exerciseDays" type="text" inputmode="numeric" placeholder="0"></label>
+            <label class="item"><span class="item-title">Minutos cada vez</span><input name="exerciseMinutes" type="text" inputmode="numeric" placeholder="0"></label>
+            <label class="item"><span class="item-title">Trabajo</span>
+              <select name="work">
+                <option value="">—</option>
+                <option value="sentado">Sentado</option>
+                <option value="pie">De pie</option>
+                <option value="movimiento">Físico</option>
+              </select>
+            </label>
+            <label class="item"><span class="item-title">Pasos al día</span>
+              <select name="steps">
+                <option value="">No lo sé</option>
+                <option value="menos5">Menos de 5.000</option>
+                <option value="5a8">5.000 – 8.000</option>
+                <option value="8a12">8.000 – 12.000</option>
+                <option value="mas12">Más de 12.000</option>
+              </select>
+            </label>
+          </div>
+          <p class="section-foot" id="habits-suggest"></p>
+
+          <p class="section-label">Cómo comes</p>
+          <div class="group">
+            <label class="item"><span class="item-title">Aceite al cocinar</span>
+              <select name="oil">
+                <option value="">—</option>
+                <option value="poco">Poco</option>
+                <option value="normal">Normal</option>
+                <option value="mucho">Bastante</option>
+              </select>
+            </label>
+            <label class="item"><span class="item-title">Raciones</span>
+              <select name="portions">
+                <option value="">—</option>
+                <option value="pequenas">Pequeñas</option>
+                <option value="normales">Normales</option>
+                <option value="grandes">Grandes</option>
+              </select>
+            </label>
+            <label class="item"><span class="item-title">No me gusta</span><input name="dislikes" type="text" placeholder="Coliflor…"></label>
+            <label class="item"><span class="item-title">Alergias</span><input name="allergies" type="text" placeholder="Lactosa…"></label>
+          </div>
+          <p class="section-foot">Con esto afino tu gasto, y en la próxima versión los consejos de comida.</p>
+
+          <p class="section-label">Tus razones</p>
+          <div class="group">
+            <label class="item stacked"><span class="sr">Tus razones para adelgazar</span>
+              <textarea name="reasons" rows="3" placeholder="¿Por qué quieres adelgazar? Escríbelo con tus palabras: te lo recordaré cuando te dé un antojo."></textarea>
+            </label>
+          </div>
+          <button type="submit" class="btn primary block">Guardar hábitos</button>
+        </form>
+
+        <p class="section-label">Copia de seguridad</p>
+        <div class="group">
+          <button type="button" class="item action" id="export"><span class="item-title">Descargar copia</span><span class="chev" aria-hidden="true"></span></button>
+          <label class="item action"><span class="item-title">Cargar copia</span><span class="chev" aria-hidden="true"></span><input type="file" id="import" accept="application/json,.json" hidden></label>
+        </div>
+        <p class="section-foot" id="backup-status"></p>
+        <p class="section-foot">Tus datos sólo están en este móvil. Guarda una copia de vez en cuando (en Drive, en el correo…): sirve para cambiar de móvil o si algún día borras los datos de Chrome.</p>
+
+        <p class="fine center" id="version"></p>
+      </section>
+    </main>
+
+    <nav class="tabs" aria-label="Secciones">
+      <button data-go="hoy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></svg><span>Hoy</span></button>
+      <button data-go="evolucion"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 16.5 9 11l3.5 3 8-8"/><path d="M15 6h5.5v5.5"/></svg><span>Evolución</span></button>
+      <button data-go="registro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 6.5h11M8.5 12h11M8.5 17.5h11"/><circle cx="4.5" cy="6.5" r=".9"/><circle cx="4.5" cy="12" r=".9"/><circle cx="4.5" cy="17.5" r=".9"/></svg><span>Registro</span></button>
+      <button data-go="perfil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.3-3.6 4.2-5.5 7.5-5.5s6.2 1.9 7.5 5.5"/></svg><span>Perfil</span></button>
+    </nav>
+  </div>
+
+  <!-- ── Primera vez ─────────────────────────────────────────── -->
+  <div id="welcome" class="welcome" hidden>
+    <form id="welcome-form" class="welcome-card" autocomplete="off" novalidate>
+      <img class="welcome-mark" src="icons/icon.svg" alt="" width="84" height="84">
+      <h1>Trampantojo</h1>
+      <p class="lead">Tu peso real, sin trampas.<br>Un par de datos y empezamos.</p>
+      <div class="step" data-step="1">
+        <div class="group">
+          <label class="item"><span class="item-title">Nombre</span><input name="name" type="text" autocomplete="given-name" placeholder="Tu nombre" required></label>
+          <div class="item">
+            <span class="item-title">Sexo</span>
+            <div class="segmented compact" role="radiogroup" aria-label="Sexo">
+              <label><input type="radio" name="sex" value="h" required><span>Hombre</span></label>
+              <label><input type="radio" name="sex" value="m"><span>Mujer</span></label>
+            </div>
+          </div>
+          <label class="item"><span class="item-title">Nacimiento</span><input name="birthDate" type="date" required></label>
+          <label class="item"><span class="item-title">Altura</span><span class="field-unit"><input name="heightCm" type="text" inputmode="numeric" placeholder="0" required><span>cm</span></span></label>
+        </div>
+      </div>
+      <div class="step" data-step="2" hidden>
+        <div class="group">
+          <label class="item"><span class="item-title">Peso de hoy</span><span class="field-unit"><input name="kg" type="text" inputmode="decimal" placeholder="0,0" required><span>kg</span></span></label>
+          <label class="item"><span class="item-title">Peso objetivo</span><span class="field-unit"><input name="goalKg" type="text" inputmode="decimal" placeholder="0,0" required><span>kg</span></span></label>
+          <label class="item"><span class="item-title">Ritmo</span>
+            <select name="rateKgWeek">
+              <option value="0.25">Suave · 0,25 kg/sem</option>
+              <option value="0.5" selected>Normal · 0,5 kg/sem</option>
+              <option value="0.75">Rápido · 0,75 kg/sem</option>
+              <option value="1">Máximo · 1 kg/sem</option>
+            </select>
+          </label>
+          <label class="item"><span class="item-title">Actividad</span><select name="activity"></select></label>
+        </div>
+        <p class="section-foot" id="welcome-goal-hint"></p>
+      </div>
+      <p class="error" id="welcome-error" role="alert"></p>
+      <div class="welcome-actions">
+        <button type="submit" class="btn primary block" id="welcome-next">Continuar</button>
+        <button type="button" class="btn plain block" id="welcome-back" hidden>Atrás</button>
+      </div>
+      <p class="fine center">Todo se guarda en este móvil y en ningún otro sitio. Trampantojo te orienta; si tienes alguna enfermedad o tomas medicación, consulta a tu médico antes de hacer dieta.</p>
+    </form>
+  </div>
+
+  <!-- ── Corregir una pesada: hoja inferior ──────────────────── -->
+  <dialog id="edit-dialog" class="sheet">
+    <form id="edit-form" autocomplete="off">
+      <div class="sheet-grabber" aria-hidden="true"></div>
+      <div class="sheet-bar">
+        <button type="button" class="bar-btn" id="edit-cancel">Cancelar</button>
+        <h2 id="edit-title">Pesada</h2>
+        <button type="submit" class="bar-btn strong">Guardar</button>
+      </div>
+      <div class="group">
+        <label class="item"><span class="item-title">Día</span><input name="date" type="date" required></label>
+        <label class="item"><span class="item-title">Peso</span><span class="field-unit"><input name="kg" type="text" inputmode="decimal" placeholder="0,0" required><span>kg</span></span></label>
+      </div>
+      <p class="section-label">Medidas (opcional)</p>
+      <div class="group">
+        <label class="item"><span class="item-title">Cintura</span><span class="field-unit"><input name="waist" type="text" inputmode="decimal" placeholder="—"><span>cm</span></span></label>
+        <label class="item"><span class="item-title">Cuello</span><span class="field-unit"><input name="neck" type="text" inputmode="decimal" placeholder="—"><span>cm</span></span></label>
+        <label class="item only-m"><span class="item-title">Cadera</span><span class="field-unit"><input name="hip" type="text" inputmode="decimal" placeholder="—"><span>cm</span></span></label>
+      </div>
+      <p class="error" id="edit-error" role="alert"></p>
+      <div class="group">
+        <button type="button" class="item action destructive" id="edit-delete"><span class="item-title">Borrar esta pesada</span></button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ── Aviso de datos ilegibles ─────────────────────────────── -->
+  <div id="storage-alert" class="alert" hidden role="alert">
+    <p class="message-title">No he podido leer tus datos</p>
+    <p class="message-text" id="storage-alert-text"></p>
+    <div class="alert-actions">
+      <button class="btn tinted" id="storage-download">Descargar lo que había</button>
+      <button class="btn plain destructive" id="storage-reset">Apartarlo y empezar</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script type="module" src="js/app.js?v=0.1.0"></script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trampantojo · estado</title>
+  <style>
+    body { font: 15px/1.45 system-ui, sans-serif; margin: 16px; background: #fcfcfb; color: #0b0b0b; }
+    @media (prefers-color-scheme: dark) { body { background: #1a1a19; color: #fff; } }
+    h1 { font-size: 20px; }
+    dt { font-weight: 600; margin-top: 10px; }
+    dd { margin: 2px 0 0; word-break: break-word; }
+    .ok::before { content: '✓ '; color: #0ca30c; }
+    .ko::before { content: '✗ '; color: #d03b3b; }
+  </style>
+</head>
+<body>
+  <h1>Estado de Trampantojo en este móvil</h1>
+  <p>Diagnóstico para cuando algo no va. No cambia nada.</p>
+  <dl id="out"></dl>
+  <p><a href="./">Volver a la app</a></p>
+  <script>
+    const out = document.getElementById('out');
+    function row(label, value, ok) {
+      const dt = document.createElement('dt'); dt.textContent = label;
+      const dd = document.createElement('dd'); dd.textContent = value;
+      if (ok === true) dd.className = 'ok'; else if (ok === false) dd.className = 'ko';
+      out.append(dt, dd);
+    }
+    (async () => {
+      row('Abierta como app instalada', matchMedia('(display-mode: standalone)').matches ? 'Sí' : 'No (en el navegador)');
+      try {
+        const r = await fetch('manifest.webmanifest', { cache: 'no-store' });
+        const m = await r.json();
+        row('Manifiesto', `${m.name} · ${m.icons.length} iconos`, true);
+      } catch (e) { row('Manifiesto', 'No carga: ' + e, false); }
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        row('Service worker', reg ? (reg.active ? 'Activo' : 'Registrado, aún no activo') : 'No registrado', !!reg?.active);
+        const keys = await caches.keys();
+        row('Cachés', keys.join(', ') || 'ninguna', keys.length > 0);
+      } else row('Service worker', 'Este navegador no lo admite', false);
+      try {
+        const persisted = await navigator.storage?.persisted?.();
+        row('Almacenamiento protegido', persisted ? 'Sí: el móvil no lo borrará por falta de espacio' : 'No (se pide al guardar el primer peso)', persisted);
+        const est = await navigator.storage?.estimate?.();
+        if (est) row('Espacio usado', `${(est.usage / 1024).toFixed(0)} KB de ${(est.quota / 1048576).toFixed(0)} MB`);
+      } catch { /* sin datos de almacenamiento */ }
+      try {
+        const raw = localStorage.getItem('trampantojo:datos');
+        if (!raw) row('Tus datos', 'Todavía no hay nada guardado');
+        else {
+          const d = JSON.parse(raw);
+          const w = (d.weights || []).map(x => x.date).sort();
+          row('Tus datos', `Legibles · versión ${d.schema} · ${w.length} pesadas${w.length ? ` (del ${w[0]} al ${w[w.length - 1]})` : ''}`, true);
+          row('Última copia de seguridad', d.meta?.lastBackup || 'nunca', !!d.meta?.lastBackup);
+        }
+        const snaps = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k.startsWith('trampantojo:') && k !== 'trampantojo:datos' && k !== 'trampantojo:ui') snaps.push(k.replace('trampantojo:', ''));
+        }
+        row('Copias internas apartadas', snaps.sort().join(' · ') || 'ninguna');
+      } catch (e) { row('Tus datos', 'No se pueden leer: ' + e, false); }
+      row('Navegador', navigator.userAgent);
+    })();
+  </script>
+</body>
+</html>
