@@ -4,9 +4,9 @@
    si borras una pesada que lo sostenía, el logro no se inventa. La fecha en
    que se consiguió sí se guarda, para poder felicitarte una sola vez. */
 
-import { addDays, daysBetween, bmiZone, bmi, dayKcal } from './calc.js?v=0.9.1';
-import { qualityMix } from './calidad.js?v=0.9.1';
-import { bestWeekMinutes } from './ejercicio.js?v=0.9.1';
+import { addDays, daysBetween, bmiZone, bmi, dayKcal } from './calc.js?v=0.10.0';
+import { qualityMix } from './calidad.js?v=0.10.0';
+import { bestWeekMinutes } from './ejercicio.js?v=0.10.0';
 
 /* ── agua ───────────────────────────────────────────────────────────── */
 
@@ -103,11 +103,16 @@ export function weekSummary(state, daily, today, sex) {
   const cur = range(today, 7), prev = range(addDays(today, -7), 7);
   const stats = days => {
     const kcalDays = days.map(d => dayKcal(state.food, d)).filter(k => k >= 800);
+    const mix = days.reduce((a, d) => {
+      const m = qualityMix(state.food?.[d] || [], state);
+      return { b: a.b + m.kcal.b, known: a.known + m.known };
+    }, { b: 0, known: 0 });
     const water = days.map(d => state.water?.[d] || 0);
     const cr = (state.cravings || []).filter(c => days.includes(c.date));
     return {
       weighIns: (state.weights || []).filter(w => days.includes(w.date)).length,
       avgKcal: kcalDays.length ? kcalDays.reduce((a, b) => a + b, 0) / kcalDays.length : null,
+      goodPct: mix.known >= 800 ? mix.b / mix.known : null,
       foodDays: kcalDays.length,
       avgWater: water.reduce((a, b) => a + b, 0) / days.length,
       cravings: cr.length,

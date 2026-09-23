@@ -8,10 +8,11 @@
    Cada apunte guarda sus calorías y nutrientes CALCULADOS en el momento: si la
    tabla cambia en una versión futura, lo que comiste ayer no cambia. */
 
-import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.9.1';
-import { kg1 } from './charts.js?v=0.9.1';
-import { suggest } from './ideas.js?v=0.9.1';
-import { foodQuality, entryQuality, productQuality, qualityMix, tagLine, TYPES, QLABEL, QSHORT } from './calidad.js?v=0.9.1';
+import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.10.0';
+import { kg1 } from './charts.js?v=0.10.0';
+import { suggest } from './ideas.js?v=0.10.0';
+import { foodQuality, entryQuality, productQuality, qualityMix, tagLine, TYPES, QLABEL, QSHORT } from './calidad.js?v=0.10.0';
+import { SLOTS, buildMenu, pickFor, mealNutrients, dayTotal, factorText, shoppingList, shoppingText } from './menu.js?v=0.10.0';
 
 export const MEALS = [
   { id: 'desayuno', label: 'Desayuno' },
@@ -532,6 +533,7 @@ export function initComidas(ctx) {
 
     renderDayQuality(entries, st, isToday);
     renderIdeas(s, date, isToday, tot, target);
+    renderMenu(s);
 
     const wrap = $('#meals');
     wrap.replaceChildren();
@@ -570,6 +572,189 @@ export function initComidas(ctx) {
       }));
     });
   }
+
+  /* ── el menú de la semana ─────────────────────────────────────────── */
+
+  let menuDay = null;          // el día del menú que se está viendo (índice)
+
+  function menuKcal(s) {
+    return Math.round((s.targetBase?.kcal || s.target?.kcal || 2000) / 10) * 10;
+  }
+
+  function avoidText() {
+    const st = getState();
+    return `${st.habits?.allergies || ''} ${st.habits?.dislikes || ''}`;
+  }
+
+  function makeMenu(s, seed) {
+    const st = getState();
+    st.meta = { ...(st.meta || {}), menu: { ...buildMenu({ start: today(), dayKcal: menuKcal(s), avoidText: avoidText(), seed }), checked: {} } };
+    menuDay = 0;
+    if (persist('Menú listo: siete días con tus calorías y la lista de la compra.')) render();
+  }
+
+  const shortDay = iso => {
+    const d = new Date(iso + 'T12:00');
+    return iso === today() ? 'Hoy' : d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }).replace('.', '');
+  };
+
+  function renderMenu(s) {
+    const card = $('#menu-card');
+    card.replaceChildren();
+    const st = getState();
+    const menu = st.meta?.menu;
+    const last = menu?.days?.[menu.days.length - 1]?.date;
+    const active = menu && last >= today();
+    if (!active) {
+      const t = document.createElement('p'); t.className = 'message-title';
+      t.textContent = menu ? 'Tu menú de la semana ha terminado' : 'Te preparo el menú de la semana';
+      const x = document.createElement('p'); x.className = 'message-text';
+      x.textContent = `Siete días de platos de casa con calorías buenas, repartidos en cinco tomas y con las raciones ajustadas a tus ${int(menuKcal(s))} kcal. Sin tus alergias ni lo que no te gusta, y con la lista de la compra hecha.`;
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn primary block'; b.textContent = menu ? 'Preparar el de esta semana' : 'Preparar mi menú';
+      b.addEventListener('click', () => makeMenu(s, (menu?.seed || 0) + 1));
+      card.append(t, x, b);
+      return;
+    }
+    const todayIdx = menu.days.findIndex(d => d.date === today());
+    if (menuDay == null || menuDay >= menu.days.length) menuDay = Math.max(0, todayIdx);
+    // los días
+    const chips = document.createElement('div');
+    chips.className = 'menu-days';
+    chips.setAttribute('role', 'tablist');
+    menu.days.forEach((d, i) => {
+      if (d.date < today()) return;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(i === menuDay));
+      b.textContent = shortDay(d.date);
+      b.addEventListener('click', () => { menuDay = i; renderMenu(s); });
+      chips.appendChild(b);
+    });
+    card.appendChild(chips);
+    const day = menu.days[menuDay];
+    const isToday = day.date === today();
+    const logged = new Set((st.food?.[today()] || []).map(e => e.meal));
+    const ul = document.createElement('ul');
+    ul.className = 'menu-meals';
+    SLOTS.forEach(slot => {
+      const pick = day.meals[slot.id];
+      const n = mealNutrients(pick);
+      if (!n) return;
+      const li = document.createElement('li');
+      const head = document.createElement('p'); head.className = 'menu-slot'; head.textContent = slot.label;
+      const name = document.createElement('p'); name.className = 'menu-dish';
+      const dot = document.createElement('span'); dot.className = 'qdot q-b'; dot.setAttribute('aria-hidden', 'true');
+      name.append(dot, document.createTextNode(n.idea.name));
+      const meta = document.createElement('p'); meta.className = 'menu-meta';
+      meta.textContent = `${int(n.kcal)} kcal · ${int(n.p)} g de proteína${factorText(n.f) ? ` · ${factorText(n.f)}` : ''}`;
+      const acts = document.createElement('div'); acts.className = 'menu-acts';
+      if (isToday) {
+        const log = document.createElement('button'); log.type = 'button'; log.className = 'btn small ghost';
+        log.textContent = logged.has(slot.id) ? 'Apuntar otra vez' : 'Apuntar';
+        log.addEventListener('click', () => logIdea(n.idea, n, slot.id));
+        acts.appendChild(log);
+      }
+      const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'btn small plain'; sw.textContent = 'Cambiar';
+      sw.addEventListener('click', () => {
+        const used = {};
+        menu.days.forEach((d, i) => { if (i !== menuDay && d.meals[slot.id]) (used[slot.id] = used[slot.id] || []).push(d.meals[slot.id].id); });
+        const tried = [...(menu.tried?.[`${menuDay}:${slot.id}`] || []), pick.id];
+        let next = pickFor(slot, { dayKcal: menu.dayKcal, avoidText: avoidText(), seed: menu.seed + tried.length, dayIndex: menuDay, used, exclude: tried });
+        const key = `${menuDay}:${slot.id}`;
+        if (!next) {                                           // ya se han visto todas: se vuelve a empezar
+          next = pickFor(slot, { dayKcal: menu.dayKcal, avoidText: avoidText(), seed: menu.seed + 99, dayIndex: menuDay, used, exclude: [pick.id] });
+          menu.tried = { ...(menu.tried || {}), [key]: [] };
+        } else menu.tried = { ...(menu.tried || {}), [key]: tried };
+        if (!next) { toast('No hay otra idea para esta toma con tus alergias.'); return; }
+        day.meals[slot.id] = next;
+        if (persist()) renderMenu(s);
+      });
+      acts.appendChild(sw);
+      li.append(head, name, meta, acts);
+      ul.appendChild(li);
+    });
+    card.appendChild(ul);
+    const tot = dayTotal(day);
+    const sum = document.createElement('p'); sum.className = 'card-foot';
+    sum.textContent = `Total del día: ${int(tot.kcal)} de ${int(menu.dayKcal)} kcal · ${int(tot.p)} g de proteína. Las raciones ya van ajustadas a tus calorías.`;
+    card.appendChild(sum);
+    const row = document.createElement('div'); row.className = 'menu-row';
+    const shop = document.createElement('button'); shop.type = 'button'; shop.className = 'btn primary small'; shop.textContent = 'Lista de la compra';
+    shop.addEventListener('click', openShop);
+    const redo = document.createElement('button'); redo.type = 'button'; redo.className = 'btn plain small'; redo.textContent = 'Otra propuesta';
+    redo.addEventListener('click', () => { if (confirm('¿Hago otro menú desde hoy? El de ahora se sustituye.')) makeMenu(s, (menu.seed || 0) + 7); });
+    row.append(shop, redo);
+    card.appendChild(row);
+  }
+
+  /* ── la lista de la compra ───────────────────────────────────────── */
+
+  const sdlg = $('#shop-dialog');
+
+  function remainingMenu() {
+    const menu = getState().meta?.menu;
+    return menu ? { ...menu, days: menu.days.filter(d => d.date >= today()) } : null;
+  }
+
+  function renderShop() {
+    const st = getState();
+    const menu = remainingMenu();
+    const checked = st.meta?.menu?.checked || {};
+    const groups = shoppingList(menu);
+    const box = $('#shop-list');
+    box.replaceChildren();
+    const total = groups.reduce((a, g) => a + g.items.length, 0);
+    const done = groups.reduce((a, g) => a + g.items.filter(i => checked[i.id]).length, 0);
+    $('#shop-sub').textContent = `Para ${menu.days.length === 7 ? 'los siete días' : `los ${menu.days.length} días que quedan`} del menú. ${done ? `Llevas ${done} de ${total}.` : 'Toca cada cosa al echarla al carro.'}`;
+    groups.forEach(g => {
+      const h = document.createElement('p'); h.className = 'section-label'; h.textContent = g.name;
+      const ul = document.createElement('ul'); ul.className = 'group shop-group';
+      g.items.forEach(it => {
+        const li = document.createElement('li');
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = `shop-item${checked[it.id] ? ' done' : ''}`;
+        b.setAttribute('aria-pressed', String(!!checked[it.id]));
+        const box2 = document.createElement('span'); box2.className = 'shop-check'; box2.setAttribute('aria-hidden', 'true');
+        const txt = document.createElement('span'); txt.className = 'shop-text';
+        const nm = document.createElement('span'); nm.className = 'shop-name'; nm.textContent = it.name;
+        const am = document.createElement('span'); am.className = 'shop-amount'; am.textContent = `${it.amount}${it.note ? ` · ${it.note}` : ''}`;
+        txt.append(nm, am);
+        b.append(box2, txt);
+        b.addEventListener('click', () => {
+          const m = getState().meta.menu;
+          m.checked = { ...(m.checked || {}), [it.id]: !m.checked?.[it.id] };
+          if (persist()) renderShop();
+        });
+        li.appendChild(b);
+        ul.appendChild(li);
+      });
+      box.append(h, ul);
+    });
+  }
+
+  function openShop() {
+    renderShop();
+    sdlg.showModal();
+  }
+
+  $('#shop-close').addEventListener('click', () => sdlg.close());
+  sdlg.addEventListener('click', e => { if (e.target === sdlg) sdlg.close(); });
+  $('#shop-clear').addEventListener('click', () => {
+    const m = getState().meta?.menu;
+    if (!m) return;
+    m.checked = {};
+    if (persist()) renderShop();
+  });
+  $('#shop-share').addEventListener('click', async () => {
+    const text = shoppingText(shoppingList(remainingMenu()), getState().meta?.menu?.checked || {});
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Lista de la compra', text }); return; }
+    } catch (err) { if (err?.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(text); toast('Lista copiada: pégala donde quieras.'); }
+    catch { toast('No he podido compartirla desde aquí.', true); }
+  });
 
   /* ── qué tipo de calorías llevas hoy ──────────────────────────────── */
 

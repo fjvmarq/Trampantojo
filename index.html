@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/app.css?v=0.9.1">
+  <link rel="stylesheet" href="css/app.css?v=0.10.0">
 </head>
 <body>
   <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
@@ -141,6 +141,8 @@
         </div>
         <div class="card ideas-card" id="ideas-card" hidden></div>
         <div id="meals"></div>
+        <p class="section-label">Menú de la semana</p>
+        <div class="card menu-card" id="menu-card"></div>
         <p class="section-label">Mis platos</p>
         <ul class="group log" id="dishes"></ul>
         <p class="section-foot" id="dishes-empty">Cuando apuntes una comida con varias cosas (lentejas + pan + aceite), «Guardar como plato» la deja lista para otro día, de un toque.</p>
@@ -505,6 +507,18 @@
   </dialog>
 
   <!-- ── Tengo un antojo ─────────────────────────────────────── -->
+  <dialog id="shop-dialog" class="sheet tall">
+    <div class="sheet-grabber" aria-hidden="true"></div>
+    <div class="sheet-bar">
+      <button type="button" class="bar-btn" id="shop-close">Cerrar</button>
+      <h2>La compra</h2>
+      <button type="button" class="bar-btn" id="shop-share">Compartir</button>
+    </div>
+    <p class="card-sub" id="shop-sub"></p>
+    <div id="shop-list"></div>
+    <button type="button" class="btn plain block" id="shop-clear">Desmarcar todo</button>
+  </dialog>
+
   <dialog id="exercise-dialog" class="sheet">
     <div class="sheet-grabber" aria-hidden="true"></div>
     <div class="sheet-bar">
@@ -679,6 +693,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.9.1"></script>
+  <script type="module" src="js/app.js?v=0.10.0"></script>
 </body>
 </html>

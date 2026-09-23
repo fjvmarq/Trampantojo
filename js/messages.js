@@ -4,8 +4,8 @@
    decide cuál, para que no cambie cada vez que abres la app.
    Tono: de apoyo, nunca de culpa. Un día malo no es un fracaso. */
 
-import { kg1, shortDate } from './charts.js?v=0.9.1';
-import { daysBetween } from './calc.js?v=0.9.1';
+import { kg1, shortDate } from './charts.js?v=0.10.0';
+import { daysBetween } from './calc.js?v=0.10.0';
 
 const pct1 = v => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(v);
 
@@ -100,6 +100,19 @@ export function messageOfTheDay(s, profile, now = new Date()) {
       }
       const won = cr.filter(c => c.date === s.today && (c.outcome === 'resistido' || c.outcome === 'alternativa')).length;
       if (won) add(5, won === 1 ? 'Antojo vencido' : `${won} antojos vencidos hoy`, 'Cada vez que dejas pasar la ola, el hábito se debilita un poco. Así se cambia de verdad.');
+    }
+    // el tipo de calorías de ayer: lo que decide no es cuántas, sino de cuáles
+    const qy = s.qualityYesterday;
+    if (qy && qy.known >= 1000) {
+      const good = Math.round(qy.pct.b * 100), bad = Math.round(qy.pct.m * 100);
+      if (qy.pct.b >= 0.75) {
+        add(4, 'Ayer, comida de verdad', `El ${good} % de tus calorías fueron de las buenas: te alimentan, te sacian y no te piden más. Así es como se adelgaza sin pasar hambre.`);
+      } else if (qy.pct.m >= 0.35) {
+        add(5, 'Hoy, cambia una', `Ayer el ${bad} % de tus calorías fueron de las que no alimentan${qy.worst?.entry?.name ? ` (lo que más: ${qy.worst.entry.name.toLowerCase()})` : ''}. No hace falta comer menos: cambia una de ellas por comida de verdad y lo notarás en el hambre.`);
+      }
+    }
+    if (s.week && now.getDay() === 1 && s.week.cur.goodPct != null && s.week.prev.goodPct != null && s.week.cur.goodPct - s.week.prev.goodPct >= 0.1) {
+      add(6, 'Comes mejor que la semana pasada', `Tus calorías buenas han pasado del ${Math.round(s.week.prev.goodPct * 100)} % al ${Math.round(s.week.cur.goodPct * 100)} %. Eso cuenta más que cualquier número de la báscula.`);
     }
     if (s.exerciseToday?.minutes >= 20) {
       add(4, `Hoy te has movido ${s.exerciseToday.minutes} minutos`, 'El ejercicio no es para ganarte la comida: es lo que hace que lo que pierdas sea grasa y no músculo, y que duermas y comas mejor.');

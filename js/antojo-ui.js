@@ -1,8 +1,8 @@
 /* Trampantojo — la hoja de «Tengo un antojo» (la lógica está en antojo.js). */
 
-import { CRAVINGS, MOODS, HUNGER, SLEEP, explain, cost, alternatives, portionOf, smallerPortion, cravingStats, analyzeCravings, BLOCKS, cravingQuality, swapFor, satiety, minutesText } from './antojo.js?v=0.9.1';
-import { TYPES, QLABEL, bodyZones, foodQuality, tagLine } from './calidad.js?v=0.9.1';
-import { bodySvg, ZONE_NAMES } from './cuerpo.js?v=0.9.1';
+import { CRAVINGS, MOODS, HUNGER, SLEEP, explain, cost, alternatives, portionOf, smallerPortion, cravingStats, analyzeCravings, BLOCKS, cravingQuality, swapFor, satiety, minutesText } from './antojo.js?v=0.10.0';
+import { TYPES, QLABEL, bodyZones, foodQuality, tagLine } from './calidad.js?v=0.10.0';
+import { bodySvg, ZONE_NAMES } from './cuerpo.js?v=0.10.0';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 let intFmt;

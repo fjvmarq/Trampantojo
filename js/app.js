@@ -2,20 +2,20 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.9.1';
-import * as S from './store.js?v=0.9.1';
-import { weightChart, rateChart, kcalChart, measureChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.9.1';
-import { initComidas } from './comidas.js?v=0.9.1';
-import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.9.1';
-import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.9.1';
-import { messageOfTheDay } from './messages.js?v=0.9.1';
-import { startAmbient } from './ambient.js?v=0.9.1';
-import { qualityMix } from './calidad.js?v=0.9.1';
-import * as CP from './copia.js?v=0.9.1';
-import * as AG from './agua.js?v=0.9.1';
-import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.9.1';
+import * as C from './calc.js?v=0.10.0';
+import * as S from './store.js?v=0.10.0';
+import { weightChart, rateChart, kcalChart, measureChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.10.0';
+import { initComidas } from './comidas.js?v=0.10.0';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.10.0';
+import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.10.0';
+import { messageOfTheDay } from './messages.js?v=0.10.0';
+import { startAmbient } from './ambient.js?v=0.10.0';
+import { qualityMix } from './calidad.js?v=0.10.0';
+import * as CP from './copia.js?v=0.10.0';
+import * as AG from './agua.js?v=0.10.0';
+import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.10.0';
 
-const VERSION = '0.9.1';
+const VERSION = '0.10.0';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -162,6 +162,7 @@ function renderHoy(s) {
 
   // mensaje (el lunes, con el resumen de tu semana)
   s.week = weekSummary(state, s.daily, s.today, p.sex);
+  s.qualityYesterday = qualityMix(state.food?.[C.addDays(s.today, -1)] || [], state);
   const msg = messageOfTheDay(s, p);
   $('#message-title').textContent = msg.title;
   $('#message-text').textContent = msg.text;
@@ -778,6 +779,8 @@ function renderWeek(s) {
   item('Antojos vencidos', `${w.cur.beaten} de ${w.cur.cravings}`, w.prev.cravings ? `la anterior: ${w.prev.beaten} de ${w.prev.cravings}` : null, false);
   item('Agua al día', `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(w.cur.avgWater)} vasos`, `tu objetivo: ${w.waterGoal}`, w.cur.avgWater >= w.waterGoal);
   item('Ejercicio', minFmt(w.cur.exMinutes), w.prev.exMinutes ? `la anterior: ${minFmt(w.prev.exMinutes)}` : 'la OMS: 150 min', w.cur.exMinutes >= WHO_WEEKLY_MIN);
+  const gp = w.cur.goodPct, gpp = w.prev.goodPct;
+  item('Calorías buenas', gp == null ? '—' : `${Math.round(gp * 100)} %`, gp != null && gpp != null ? `la anterior: ${Math.round(gpp * 100)} %` : 'de lo que apuntas', gp != null && gp >= 0.7);
   item('Días pesándote', `${w.cur.weighIns} de 7`, null, false);
   box.append(t, sub, grid);
 }

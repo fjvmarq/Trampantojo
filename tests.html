@@ -18,18 +18,19 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.9.1';
-    import * as S from './js/store.js?v=0.9.1';
-    import { messageOfTheDay } from './js/messages.js?v=0.9.1';
-    import * as FO from './js/foods.js?v=0.9.1';
-    import * as AN from './js/antojo.js?v=0.9.1';
-    import * as ID from './js/ideas.js?v=0.9.1';
-    import * as LG from './js/logros.js?v=0.9.1';
-    import * as CQ from './js/calidad.js?v=0.9.1';
-    import * as EJ from './js/ejercicio.js?v=0.9.1';
-    import * as BD from './js/cuerpo.js?v=0.9.1';
-    import * as AG from './js/agua.js?v=0.9.1';
-    import * as CH from './js/charts.js?v=0.9.1';
+    import * as C from './js/calc.js?v=0.10.0';
+    import * as S from './js/store.js?v=0.10.0';
+    import { messageOfTheDay } from './js/messages.js?v=0.10.0';
+    import * as FO from './js/foods.js?v=0.10.0';
+    import * as AN from './js/antojo.js?v=0.10.0';
+    import * as ID from './js/ideas.js?v=0.10.0';
+    import * as LG from './js/logros.js?v=0.10.0';
+    import * as CQ from './js/calidad.js?v=0.10.0';
+    import * as EJ from './js/ejercicio.js?v=0.10.0';
+    import * as BD from './js/cuerpo.js?v=0.10.0';
+    import * as AG from './js/agua.js?v=0.10.0';
+    import * as CH from './js/charts.js?v=0.10.0';
+    import * as MN from './js/menu.js?v=0.10.0';
     import * as WK from './worker/agua.js';
 
     const out = document.getElementById('out');
@@ -227,6 +228,32 @@
     check('antojo: los antojos de calorías malas lo dicen', ['dulce', 'bolleria', 'refresco', 'alcohol', 'embutido'].every(id => AN.cravingQuality(AN.CRAVINGS.find(c => c.id === id)).q === 'm'));
     check('antojo: la napolitana sacia poco, las tostadas mucho', AN.satiety(AN.cravingQuality(AN.CRAVINGS.find(c => c.id === 'bolleria')).tags, 5) === 'poco' && AN.satiety(AN.swapFor(AN.CRAVINGS.find(c => c.id === 'bolleria')).tags, 15) !== 'poco');
     check('antojo: las alternativas de bebida existen', AN.alternatives('bebida', 3, {}).length >= 3 && AN.alternatives('bebida', 3, {}).every(a => AN.portionOf(a.food)));
+
+    // el tipo de calorías en los mensajes y en la semana
+    const yday = C.addDays('2026-09-23', -1);
+    const msgBad = messageOfTheDay({ hasData: true, entries: Array(10).fill({}), today: '2026-09-23', qualityYesterday: CQ.qualityMix([{ src: 'tabla', ref: 'napolitana', name: 'Napolitana de chocolate', kcal: 600 }, { src: 'tabla', ref: 'lentejas', name: 'Lentejas cocidas', kcal: 600 }], {}) }, { name: 'Ana', goalKg: 60 }, new Date('2026-09-23T18:00:00'));
+    check('mensaje: si ayer la mitad fue de las malas, propone cambiar una', /cambia una/i.test(msgBad.title) && /napolitana/.test(msgBad.text), msgBad.title);
+    const wkQ = LG.weekSummary({ food: { [yday]: [{ src: 'tabla', ref: 'lentejas', kcal: 700 }, { src: 'tabla', ref: 'napolitana', kcal: 300 }] }, weights: [] }, [], '2026-09-23', 'h');
+    check('semana: el porcentaje de calorías buenas', Math.abs(wkQ.cur.goodPct - 0.7) < 0.001 && wkQ.prev.goodPct === null, JSON.stringify(wkQ.cur.goodPct));
+
+    // el menú de la semana
+    for (const kc of [1600, 1900, 2300]) {
+      const mn = MN.buildMenu({ start: '2026-09-23', dayKcal: kc, seed: 3 });
+      const tots = mn.days.map(d => MN.dayTotal(d).kcal);
+      check(`menú: 7 días de 5 tomas que cuadran con ${kc} kcal (±15 %)`, mn.days.length === 7 && mn.days.every(d => Object.keys(d.meals).length === 5) && tots.every(t => Math.abs(t - kc) / kc <= 0.15), tots.map(Math.round).join(', '));
+    }
+    const mnA = MN.buildMenu({ start: '2026-09-23', dayKcal: 1900, avoidText: 'alergia al huevo y a la lactosa', seed: 5 });
+    check('menú: respeta las alergias', mnA.days.every(d => Object.values(d.meals).every(p => !MN.IDEAS_BY_ID.get(p.id).tags.some(t => ['huevo', 'lactosa', 'leche'].includes(t)))));
+    const mnB = MN.buildMenu({ start: '2026-09-23', dayKcal: 1900, seed: 1 });
+    check('menú: nunca el mismo plato dos días seguidos', mnB.days.every((d, i) => !i || Object.keys(d.meals).every(k => mnB.days[i - 1].meals[k]?.id !== d.meals[k].id)));
+    check('menú: los tentempiés, en raciones enteras', mnB.days.every(d => [d.meals.media, d.meals.merienda].every(p => Number.isInteger(p.f))));
+    check('menú: la misma semilla da el mismo menú', JSON.stringify(MN.buildMenu({ start: '2026-09-23', dayKcal: 1900, seed: 1 })) === JSON.stringify(mnB));
+    const shop = MN.shoppingList(mnB);
+    const shopItems = shop.flatMap(g => g.items);
+    check('lista: por pasillos y sin cosas repetidas', shop.length >= 4 && new Set(shopItems.map(i => i.id)).size === shopItems.length);
+    check('lista: el arroz y la pasta, en crudo; las tortillas, en huevos', !shopItems.some(i => ['arroz-cocido', 'pasta-cocida', 'tortilla-francesa', 'revuelto', 'cafe-leche'].includes(i.id)));
+    check('lista: lo que va por piezas, entero', MN.shopAmount(FO.FOODS_BY_ID.get('pan-integral'), 400) === '14 rebanadas (≈ 400 g)' && MN.shopAmount(FO.FOODS_BY_ID.get('leche-semi'), 600) === '0,75 L', MN.shopAmount(FO.FOODS_BY_ID.get('pan-integral'), 400));
+    check('lista: en texto para compartir', /LÁCTEOS Y HUEVOS|FRUTA Y VERDURA/.test(MN.shoppingText(shop)));
 
     // la cintura
     const wBox = document.createElement('div'); document.body.appendChild(wBox);

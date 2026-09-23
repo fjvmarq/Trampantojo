@@ -10,7 +10,7 @@
 
    Tus datos NO están aquí: están en localStorage, y este fichero no los toca. */
 
-const CACHE = 'trampantojo-0.9.1';
+const CACHE = 'trampantojo-0.10.0';
 
 /* ── los recordatorios de agua ──────────────────────────────────────────
    La app deja en IndexedDB («trampantojo» › «kv» › «agua») lo que hace falta:
@@ -146,25 +146,26 @@ self.addEventListener('notificationclick', e => {
 const FILES = [
   './',
   'index.html',
-  'css/app.css?v=0.9.1',
-  'js/app.js?v=0.9.1',
-  'js/ambient.js?v=0.9.1',
-  'js/foods.js?v=0.9.1',
-  'js/comidas.js?v=0.9.1',
-  'js/antojo.js?v=0.9.1',
-  'js/antojo-ui.js?v=0.9.1',
-  'js/ideas.js?v=0.9.1',
-  'js/logros.js?v=0.9.1',
-  'js/calidad.js?v=0.9.1',
-  'js/cuerpo.js?v=0.9.1',
-  'js/ejercicio.js?v=0.9.1',
-  'js/copia.js?v=0.9.1',
-  'js/agua.js?v=0.9.1',
+  'css/app.css?v=0.10.0',
+  'js/app.js?v=0.10.0',
+  'js/ambient.js?v=0.10.0',
+  'js/foods.js?v=0.10.0',
+  'js/comidas.js?v=0.10.0',
+  'js/antojo.js?v=0.10.0',
+  'js/antojo-ui.js?v=0.10.0',
+  'js/ideas.js?v=0.10.0',
+  'js/logros.js?v=0.10.0',
+  'js/calidad.js?v=0.10.0',
+  'js/cuerpo.js?v=0.10.0',
+  'js/ejercicio.js?v=0.10.0',
+  'js/copia.js?v=0.10.0',
+  'js/agua.js?v=0.10.0',
+  'js/menu.js?v=0.10.0',
   'icons/badge-96.png',
-  'js/calc.js?v=0.9.1',
-  'js/charts.js?v=0.9.1',
-  'js/messages.js?v=0.9.1',
-  'js/store.js?v=0.9.1',
+  'js/calc.js?v=0.10.0',
+  'js/charts.js?v=0.10.0',
+  'js/messages.js?v=0.10.0',
+  'js/store.js?v=0.10.0',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-192.png',
