@@ -10,23 +10,24 @@
 
    Tus datos NO están aquí: están en localStorage, y este fichero no los toca. */
 
-const CACHE = 'trampantojo-0.3.5';
+const CACHE = 'trampantojo-0.3.6';
 
 const FILES = [
   './',
   'index.html',
-  'css/app.css?v=0.3.5',
-  'js/app.js?v=0.3.5',
-  'js/ambient.js?v=0.3.5',
-  'js/calc.js?v=0.3.5',
-  'js/charts.js?v=0.3.5',
-  'js/messages.js?v=0.3.5',
-  'js/store.js?v=0.3.5',
+  'css/app.css?v=0.3.6',
+  'js/app.js?v=0.3.6',
+  'js/ambient.js?v=0.3.6',
+  'js/calc.js?v=0.3.6',
+  'js/charts.js?v=0.3.6',
+  'js/messages.js?v=0.3.6',
+  'js/store.js?v=0.3.6',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/maskable-512.png',
+  'icons/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', e => {

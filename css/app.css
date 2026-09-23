@@ -46,6 +46,7 @@
   --hud-bg: rgba(29, 29, 31, 0.92);
   --hud-ink: #ffffff;
   --grid-ink: 0, 0, 0;
+  --icon-glow: rgba(255, 159, 26, 0.38);   /* el brillo del icono amarillo */
   /* gráficos */
   --chart-trend: #0071e3;
   --chart-dot: rgba(0, 113, 227, 0.36);
@@ -233,7 +234,7 @@ body {
   display: flex; align-items: center; gap: 14px;
   padding: calc(20px + env(safe-area-inset-top)) 2px 18px;
 }
-.app-mark { width: 46px; height: 46px; border-radius: 11px; flex: none; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 28%, transparent); }
+.app-mark { width: 46px; height: 46px; border-radius: 11px; flex: none; box-shadow: 0 4px 14px var(--icon-glow); }
 .app-header-text { min-width: 0; }
 .app-header h1 { margin: 0; font-size: 28px; line-height: 1.1; font-weight: 700; letter-spacing: -0.022em; }
 .app-header-sub {
@@ -560,7 +561,7 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 /* mientras dura la bienvenida, detrás sólo queda el fondo vivo */
 body.welcoming #app { display: none; }
 .welcome-card { max-width: 480px; margin: 0 auto; }
-.welcome-mark { display: block; margin: 0 auto; width: 84px; height: 84px; border-radius: 19px; box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 35%, transparent); }
+.welcome-mark { display: block; margin: 0 auto; width: 84px; height: 84px; border-radius: 19px; box-shadow: 0 10px 30px var(--icon-glow); }
 .welcome h1 { margin: 20px 0 6px; text-align: center; font-size: 42px; line-height: 1.04; font-weight: 700; letter-spacing: -0.022em; }
 .lead { margin: 0 0 26px; text-align: center; color: var(--ink-2); font-size: 17.5px; line-height: 1.45; }
 .welcome-actions .btn.plain { margin-top: 6px; }

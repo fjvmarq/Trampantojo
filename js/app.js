@@ -2,13 +2,13 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.3.5';
-import * as S from './store.js?v=0.3.5';
-import { weightChart, rateChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.3.5';
-import { messageOfTheDay } from './messages.js?v=0.3.5';
-import { startAmbient } from './ambient.js?v=0.3.5';
+import * as C from './calc.js?v=0.3.6';
+import * as S from './store.js?v=0.3.6';
+import { weightChart, rateChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.3.6';
+import { messageOfTheDay } from './messages.js?v=0.3.6';
+import { startAmbient } from './ambient.js?v=0.3.6';
 
-const VERSION = '0.3.5';
+const VERSION = '0.3.6';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];

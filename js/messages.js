@@ -4,8 +4,8 @@
    decide cuál, para que no cambie cada vez que abres la app.
    Tono: de apoyo, nunca de culpa. Un día malo no es un fracaso. */
 
-import { kg1, shortDate } from './charts.js?v=0.3.5';
-import { daysBetween } from './calc.js?v=0.3.5';
+import { kg1, shortDate } from './charts.js?v=0.3.6';
+import { daysBetween } from './calc.js?v=0.3.6';
 
 const pct1 = v => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(v);
 
