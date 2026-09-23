@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/app.css?v=0.6.1">
+  <link rel="stylesheet" href="css/app.css?v=0.7.0">
 </head>
 <body>
   <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
@@ -65,6 +65,14 @@
           <p class="eyebrow">Para hoy</p>
           <p class="message-title" id="message-title"></p>
           <p class="message-text" id="message-text"></p>
+        </div>
+
+        <div class="card water" id="water-card">
+          <div class="water-head">
+            <p class="eyebrow">Agua hoy</p>
+            <span class="water-count" id="water-count"></span>
+          </div>
+          <div class="glasses" id="glasses" role="group" aria-label="Vasos de agua"></div>
         </div>
 
         <div class="card hero" id="hero-card">
@@ -121,6 +129,7 @@
           <button type="button" role="radio" data-range="0">Todo</button>
           <button type="button" role="radio" data-range="-1">Mi plan</button>
         </div>
+        <div class="card" id="week-card"></div>
         <div class="card">
           <p class="eyebrow">Evolución del peso</p>
           <p class="card-sub" id="evo-sub"></p>
@@ -144,6 +153,8 @@
           <p class="card-sub" id="kcal-chart-sub">Lo que has apuntado cada día frente a tu objetivo.</p>
           <div class="chart-box" id="chart-kcal"></div>
         </div>
+        <p class="section-label">Tus logros</p>
+        <div class="badges" id="badges"></div>
         <p class="section-label">Tu salud en números</p>
         <dl class="group facts" id="facts"></dl>
         <p class="section-foot">Orientativo. Trampantojo te ayuda a ordenarte, no sustituye a tu médico.</p>
@@ -558,6 +569,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.6.1"></script>
+  <script type="module" src="js/app.js?v=0.7.0"></script>
 </body>
 </html>

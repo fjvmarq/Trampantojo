@@ -18,12 +18,13 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.6.1';
-    import * as S from './js/store.js?v=0.6.1';
-    import { messageOfTheDay } from './js/messages.js?v=0.6.1';
-    import * as FO from './js/foods.js?v=0.6.1';
-    import * as AN from './js/antojo.js?v=0.6.1';
-    import * as ID from './js/ideas.js?v=0.6.1';
+    import * as C from './js/calc.js?v=0.7.0';
+    import * as S from './js/store.js?v=0.7.0';
+    import { messageOfTheDay } from './js/messages.js?v=0.7.0';
+    import * as FO from './js/foods.js?v=0.7.0';
+    import * as AN from './js/antojo.js?v=0.7.0';
+    import * as ID from './js/ideas.js?v=0.7.0';
+    import * as LG from './js/logros.js?v=0.7.0';
 
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
@@ -195,6 +196,21 @@
     check('ideas: lo que no te gusta no sale', sgDislike.items.every(x => !/salm|lentejas/i.test(x.idea.name)), sgDislike.items.map(x => x.idea.name).join(' · '));
     check('ideas: todas usan alimentos que existen en la tabla', ID.IDEAS.every(i => i.items.every(([id, unit]) => FO.FOODS_BY_ID.get(id)?.u.some(([n]) => n === unit))),
       ID.IDEAS.flatMap(i => i.items.filter(([id, unit]) => !FO.FOODS_BY_ID.get(id)?.u.some(([n]) => n === unit)).map(([id, unit]) => `${i.id}:${id}/${unit}`)).join(', '));
+
+    // logros, agua y semana
+    check('racha más larga con huecos = 3', LG.longestStreak(['2026-09-01', '2026-09-02', '2026-09-04', '2026-09-05', '2026-09-06']) === 3);
+    check('agua: 8 vasos para hombre, 7 para mujer', LG.waterGoal('h') === 8 && LG.waterGoal('m') === 7);
+    const profB = { name: 'B', sex: 'h', birthDate: '1980-01-01', heightCm: 178, goalKg: 80, rateKgWeek: 0.5, activity: 'ligero' };
+    const stB = { ...S.emptyState(), profile: profB, weights: days('2026-08-01', 10, i => 95 - i * 0.3), cravings: [{ id: 'x', date: '2026-08-05', hour: 18, outcome: 'resistido' }], meta: {} };
+    const sB = C.summarize(stB, '2026-08-10');
+    const evB = LG.evaluateBadges(stB, sB, '2026-08-10');
+    const ids = evB.earned.map(e => e.badge.id);
+    check('logros: primer paso, una semana, primer kilo y primera ola', ['primer-paso', 'semana', 'kilo', 'antojo'].every(i => ids.includes(i)), ids.join(', '));
+    check('logros: sin 30 días no hay «un mes»', !ids.includes('mes'));
+    const evB2 = LG.evaluateBadges({ ...stB, meta: { badges: evB.stored } }, sB, '2026-08-11');
+    check('logros: lo ya conseguido no se felicita dos veces', evB2.fresh.length === 0 && evB2.earned.find(e => e.badge.id === 'kilo').date === '2026-08-10');
+    const wk2 = LG.weekSummary({ ...stB, water: { '2026-08-10': 8, '2026-08-09': 6 } }, sB.daily, '2026-08-10', 'h');
+    check('semana: tendencia bajando y agua media', wk2.change < 0 && near(wk2.cur.avgWater, 2, 0.01), JSON.stringify({ c: wk2.change, w: wk2.cur.avgWater }));
 
     // semanas y racha
     const wk = C.weeklyChanges(C.dailySeries(days('2026-07-01', 60, i => 100 - 0.1 * i)));

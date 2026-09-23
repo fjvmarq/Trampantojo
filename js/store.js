@@ -23,7 +23,7 @@ export const SCHEMA = 1;
 let lastLoad = 'empty';
 
 export function emptyState() {
-  return { schema: SCHEMA, profile: null, habits: {}, weights: [], milestones: [], food: {}, dishes: [], products: {}, recentFoods: [], cravings: [], meta: {} };
+  return { schema: SCHEMA, profile: null, habits: {}, weights: [], milestones: [], food: {}, dishes: [], products: {}, recentFoods: [], cravings: [], water: {}, meta: {} };
 }
 
 export function migrate(data) {
@@ -46,6 +46,8 @@ export function migrate(data) {
   if (!Array.isArray(s.dishes)) s.dishes = [];
   if (!s.products || typeof s.products !== 'object' || Array.isArray(s.products)) s.products = {};
   if (!Array.isArray(s.recentFoods)) s.recentFoods = [];
+  // agua (desde la 0.7): vasos por día
+  if (!s.water || typeof s.water !== 'object' || Array.isArray(s.water)) s.water = {};
   // antojos (desde la 0.5): cuándo, qué, cómo estabas y cómo acabó
   if (!Array.isArray(s.cravings)) s.cravings = [];
   s.cravings = s.cravings.filter(c => c && c.id && typeof c.date === 'string' && Number.isFinite(c.hour));

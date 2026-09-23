@@ -1,6 +1,6 @@
 /* Trampantojo — la hoja de «Tengo un antojo» (la lógica está en antojo.js). */
 
-import { CRAVINGS, MOODS, HUNGER, SLEEP, explain, cost, alternatives, portionOf, smallerPortion, cravingStats, analyzeCravings, BLOCKS } from './antojo.js?v=0.6.1';
+import { CRAVINGS, MOODS, HUNGER, SLEEP, explain, cost, alternatives, portionOf, smallerPortion, cravingStats, analyzeCravings, BLOCKS } from './antojo.js?v=0.7.0';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 let intFmt;

@@ -4,8 +4,8 @@
    decide cuál, para que no cambie cada vez que abres la app.
    Tono: de apoyo, nunca de culpa. Un día malo no es un fracaso. */
 
-import { kg1, shortDate } from './charts.js?v=0.6.1';
-import { daysBetween } from './calc.js?v=0.6.1';
+import { kg1, shortDate } from './charts.js?v=0.7.0';
+import { daysBetween } from './calc.js?v=0.7.0';
 
 const pct1 = v => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(v);
 
@@ -82,6 +82,12 @@ export function messageOfTheDay(s, profile, now = new Date()) {
       add(4, 'Por delante de tu plan', `Vas ${kg1(-s.pace.diff)} kg mejor de lo previsto. Sin prisa: lo que se baja despacio no vuelve.`);
     } else if (s.pace?.status === 'behind' && n >= 7) {
       add(4, 'Un poco por detrás del plan', `Vas ${kg1(s.pace.diff)} kg por encima de lo previsto. No pasa nada: una semana ordenada y vuelves al carril.`);
+    }
+    if (s.week && now.getDay() === 1 && s.week.change != null) {
+      const ch = s.week.change;
+      add(6, 'Tu semana', `${ch <= -0.1 ? `Tu tendencia bajó ${kg1(-ch)} kg` : ch >= 0.1 ? `Tu tendencia subió ${kg1(ch)} kg` : 'Tu tendencia se mantuvo'}`
+        + `${s.week.cur.foodDays ? `, comiste de media ${Math.round(s.week.cur.avgKcal / 10) * 10} kcal` : ''}`
+        + `${s.week.cur.cravings ? ` y venciste ${s.week.cur.beaten} de ${s.week.cur.cravings} antojos` : ''}. Semana nueva: a por ella.`);
     }
     const cr = profile && s.cravings ? s.cravings : null;
     if (cr && cr.length >= 3) {

@@ -2,15 +2,16 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.6.1';
-import * as S from './store.js?v=0.6.1';
-import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.6.1';
-import { initComidas } from './comidas.js?v=0.6.1';
-import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.6.1';
-import { messageOfTheDay } from './messages.js?v=0.6.1';
-import { startAmbient } from './ambient.js?v=0.6.1';
+import * as C from './calc.js?v=0.7.0';
+import * as S from './store.js?v=0.7.0';
+import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.7.0';
+import { initComidas } from './comidas.js?v=0.7.0';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.7.0';
+import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.7.0';
+import { messageOfTheDay } from './messages.js?v=0.7.0';
+import { startAmbient } from './ambient.js?v=0.7.0';
 
-const VERSION = '0.6.1';
+const VERSION = '0.7.0';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -128,6 +129,7 @@ window.addEventListener('popstate', () => go(location.hash.slice(1) || 'hoy', { 
 
 function render() {
   const s = C.summarize(state, today());
+  if (state.profile) checkBadges(s);
   $('#today-label').textContent = C.parseDate(s.today).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
   if (!state.profile) return;          // la bienvenida (o el aviso de datos) está delante
   if (current === 'hoy') renderHoy(s);
@@ -150,7 +152,10 @@ function renderHoy(s) {
       ? `Hoy ya apuntaste ${kg1(s.latest.kg)} kg. Si vuelves a guardar, se sustituye.`
       : `La última vez: ${kg1(s.latest.kg)} kg, el ${longDate(s.latest.date)}.`;
 
-  // mensaje
+  renderWater(s);
+
+  // mensaje (el lunes, con el resumen de tu semana)
+  s.week = weekSummary(state, s.daily, s.today, p.sex);
   const msg = messageOfTheDay(s, p);
   $('#message-title').textContent = msg.title;
   $('#message-text').textContent = msg.text;
@@ -333,6 +338,8 @@ function renderEvo(s) {
   });
   renderGoals(s);
   rateChart($('#chart-rate'), s.weekly);
+  renderWeek(s);
+  renderBadges(s);
   kcalChart($('#chart-kcal'), { food: state.food, target: s.target?.kcal, today: s.today });
   renderCravingCard($('#craving-card'), state.cravings, s.today, state.food, s.protein ? (s.protein[0] + s.protein[1]) / 2 : null);
 
@@ -402,6 +409,87 @@ function measuredFact(s) {
   }
   wrap.append(dt, dd);
   facts.appendChild(wrap);
+}
+
+/* ── agua ───────────────────────────────────────────────────────────── */
+
+const GLASS_SVG = '<svg viewBox="0 0 36 44" aria-hidden="true"><path class="g-in" d="M9.2 16h17.6l-2 22.2a2.4 2.4 0 0 1-2.4 2.2h-8.8a2.4 2.4 0 0 1-2.4-2.2z"/><path class="g-out" d="M6 4h24l-3 34.4a3 3 0 0 1-3 2.6H12a3 3 0 0 1-3-2.6z"/></svg>';
+
+function renderWater(s) {
+  const goal = waterGoal(state.profile.sex);
+  const n = state.water?.[s.today] || 0;
+  $('#water-count').textContent = n >= goal ? `${n} vasos · ¡hecho!` : `${n} de ${goal} vasos`;
+  const box = $('#glasses');
+  box.replaceChildren();
+  const total = Math.min(14, Math.max(goal, n + 1));
+  for (let i = 0; i < total; i++) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `glass${i < n ? ' full' : ''}`;
+    b.setAttribute('aria-label', i < n ? `Quitar vaso ${i + 1}` : `Vaso ${i + 1}`);
+    b.innerHTML = GLASS_SVG;
+    b.addEventListener('click', () => {
+      const next = i < n ? i : i + 1;    // tocar el último lleno lo vacía
+      state.water = { ...(state.water || {}), [s.today]: next };
+      if (next === 0) delete state.water[s.today];
+      if (persist(next === goal ? '¡Agua del día completada!' : null)) render();
+    });
+    box.appendChild(b);
+  }
+}
+
+/* ── logros ─────────────────────────────────────────────────────────── */
+
+function checkBadges(s) {
+  const first = !state.meta?.badges;          // la primera vez se guardan sin felicitar
+  const { fresh, stored } = evaluateBadges(state, s, s.today);
+  if (!fresh.length) return;
+  state.meta = { ...(state.meta || {}), badges: stored };
+  persist(first ? null : fresh.length === 1 ? `Logro nuevo: ${fresh[0].title}. ${fresh[0].desc}` : `${fresh.length} logros nuevos: ${fresh.map(b => b.title).join(', ')}`);
+}
+
+function renderBadges(s) {
+  const { earned, locked } = evaluateBadges(state, s, s.today);
+  const box = $('#badges');
+  box.replaceChildren();
+  const card = (b, date, isLocked) => {
+    const d = document.createElement('div');
+    d.className = `badge${isLocked ? ' locked' : ''}`;
+    d.title = b.desc;
+    const t = document.createElement('span'); t.className = 'badge-token'; t.textContent = b.glyph;
+    const h = document.createElement('span'); h.className = 'badge-title'; h.textContent = b.title;
+    const sub = document.createElement('span'); sub.className = 'badge-sub'; sub.textContent = isLocked ? b.desc : longDate(date);
+    d.append(t, h, sub);
+    return d;
+  };
+  earned.forEach(({ badge, date }) => box.appendChild(card(badge, date, false)));
+  locked.forEach(b => box.appendChild(card(b, null, true)));
+}
+
+/* ── tu semana ──────────────────────────────────────────────────────── */
+
+function renderWeek(s) {
+  const w = weekSummary(state, s.daily, s.today, state.profile.sex);
+  const box = $('#week-card');
+  box.replaceChildren();
+  const t = document.createElement('p'); t.className = 'eyebrow'; t.textContent = 'Esta semana';
+  const sub = document.createElement('p'); sub.className = 'card-sub'; sub.textContent = 'Los últimos 7 días, frente a los 7 anteriores.';
+  const grid = document.createElement('div'); grid.className = 'week-grid';
+  const item = (label, value, delta, good) => {
+    const d = document.createElement('div'); d.className = 'week-item';
+    const l = document.createElement('span'); l.className = 'l'; l.textContent = label;
+    const v = document.createElement('span'); v.className = 'v'; v.textContent = value;
+    d.append(l, v);
+    if (delta) { const x = document.createElement('span'); x.className = `d${good ? ' good' : ''}`; x.textContent = delta; d.appendChild(x); }
+    grid.appendChild(d);
+  };
+  item('Tendencia', w.change == null ? '—' : `${signed1(w.change)} kg`, null, false);
+  const k = w.cur.avgKcal, kp = w.prev.avgKcal;
+  item('Calorías de media', k == null ? '—' : `${kcal(k)}`, k != null && kp != null ? `${k <= kp ? '−' : '+'}${kcal(Math.abs(k - kp))} frente a la anterior` : `${w.cur.foodDays} de 7 días apuntados`, k != null && kp != null && k <= kp);
+  item('Antojos vencidos', `${w.cur.beaten} de ${w.cur.cravings}`, w.prev.cravings ? `la anterior: ${w.prev.beaten} de ${w.prev.cravings}` : null, false);
+  item('Agua al día', `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(w.cur.avgWater)} vasos`, `tu objetivo: ${w.waterGoal}`, w.cur.avgWater >= w.waterGoal);
+  item('Días pesándote', `${w.cur.weighIns} de 7`, null, false);
+  box.append(t, sub, grid);
 }
 
 function renderLog(s) {
