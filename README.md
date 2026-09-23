@@ -119,6 +119,22 @@ python -m http.server 8791
 | `sw.js` | funcionar sin conexión |
 | `tools/version.py` | sube la versión en todos los sitios a la vez |
 
+### El servidor de los avisos de agua (`worker/`)
+
+Un Cloudflare Worker gratuito (`worker/agua.js`): la app se da de alta con un
+código aleatorio, su suscripción push y su horario; cada 15 minutos el Worker
+mira a quién le toca (la misma regla que `js/agua.js`, con test) y le manda un
+aviso **vacío** (el texto lo pone el móvil). «Silenciar para siempre» lo borra, y
+si no llegara, el móvil da de baja la suscripción y el siguiente envío (410) lo
+borra solo.
+
+1. `pwsh tools/vapid-keys.ps1` — crea las claves en `worker/.vapid.json` (fuera de git).
+2. Un token de Cloudflare con la plantilla «Edit Cloudflare Workers», en
+   `%USERPROFILE%\.trampantojo-cloudflare-token` o en `CLOUDFLARE_API_TOKEN`.
+3. `python tools/worker-deploy.py --apply` — crea el KV, sube el Worker con su
+   secreto, pone el cron, lo publica en workers.dev y apunta `js/agua.js` a él.
+   Se puede repetir.
+
 ### Publicar una versión
 
 ```bash
