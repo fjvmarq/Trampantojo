@@ -30,7 +30,9 @@ No está en Google Play: es una **app web instalable** (PWA).
 ### Las actualizaciones
 
 **No hay que desinstalar nada.** Cada versión nueva llega sola la siguiente vez
-que abres la app con conexión. Tus datos no se tocan: viven aparte del código,
+que abres la app con conexión; y si la app estaba abierta en segundo plano, al
+volver a ella mira si hay una versión nueva y se recarga sola (salvo que estés a
+mitad de algo). Tus datos no se tocan: viven aparte del código,
 y cada versión sabe leer los de las anteriores.
 
 > ⚠️ **No borres los datos del sitio en Chrome sin una copia.** Eso sí borra
@@ -60,9 +62,11 @@ carga, si el service worker está activo y cuántas pesadas hay guardadas.
 | Objetivos intermedios | Un peso para una fecha («88 kg para Navidad»): un rombo en la gráfica. **Conseguido** si la tendencia llegó antes de la fecha; si no, se mira a dónde llegas a tu ritmo real y cuántos kg/semana harían falta |
 | Comidas | Tabla propia de ~200 alimentos y platos españoles con raciones caseras (`js/foods.js`), búsqueda sin tildes y por alias, **frases** («2 huevos y una tostada con aceite»), **código de barras** (Open Food Facts) y **mis platos**. Cada apunte guarda sus kcal calculadas en el momento |
 | Gasto real medido | Con 14 días de comidas apuntadas en 4 semanas: media comida + (bajada de la tendencia × 7.700 / días). Se puede usar en vez de la fórmula para el objetivo diario |
-| Agua, logros y tu semana | Vasos de un toque en Hoy (8 hombre / 7 mujer). 16 logros calculados de tus datos (`js/logros.js`), con aviso al conseguir uno. «Esta semana» en Evolución y el lunes en el mensaje del día |
+| Agua, logros y tu semana | Vasos de un toque en Hoy (8 hombre / 7 mujer). 17 logros calculados de tus datos (`js/logros.js`), con aviso al conseguir uno. «Esta semana» en Evolución y el lunes en el mensaje del día |
 | Ideas de comida | En Comidas, para la siguiente comida sin apuntar: platos de casa (`js/ideas.js`) que cuadran con lo que te queda de kcal, con preferencia por la proteína si vas corto, sin tus alergias ni lo que no te gusta. Se apuntan de un toque |
 | Tengo un antojo | Qué te apetece, tres preguntas (hambre, cómo estás, sueño) y **por qué te pasa**: con lo que llevas comido hoy (horas sin comer, proteína, si has comido poco) o, sin comidas apuntadas, por lo psicológico (estrés, aburrimiento, sueño, costumbre de esa hora, la noche). Lo que cuesta (kcal, minutos andando, % de lo que queda), tus razones y tres salidas: esperar 10 minutos, una alternativa sana (respeta alergias y lo que no te gusta) o comértelo con cabeza |
+| Tipo de calorías | **Lo que decide no es cuántas calorías, sino de qué tipo.** Cada alimento lleva un semáforo (`js/calidad.js`): **buenas** (comida de verdad), **con moderación** (refinados, queso curado, carne grasa…) y **a evitar** (azúcar añadido, bollería, fritos, embutido graso, ultraprocesados, alcohol), con etiquetas que dicen por qué (azúcar, harina refinada, grasa saturada, frito, carne procesada, sal, calorías líquidas / fibra, proteína, grasa buena, integral, legumbre…), cada una con su explicación y la parte del cuerpo en la que se nota. Lo escaneado, por su Nutri-Score, su grupo NOVA y sus nutrientes. Se ve en cada apunte, al buscar, al elegir la ración, en la calidad del día (Comidas) y en 14 días (Evolución) |
+| Antojo: lo primero | **Si te lo comes**: el ejercicio que haría falta para quemarlo (andar rápido, correr, bici, pádel; MET del Compendio, con tu peso y descontando el metabolismo basal). **Qué tipo de calorías son** y de qué está hecho. **Dónde se nota en tu cuerpo**, en una silueta (hígado, barriga, arterias…), sin exagerar: la grasa no va al sitio del alimento, pero azúcar, alcohol y ultraprocesados empujan hacia la visceral y la del hígado. Y **mismas calorías, pero buenas**: un cambio de las mismas kcal (±20 %, comprobado por test) comparado en proteína, saciedad y tipo, que se apunta de un toque |
 | Análisis de antojos | Cruza tus antojos con tus comidas de los últimos 60 días: desayuno pobre, poca proteína, comer muy poco, sueño, tu disparador más habitual, horas tras la última comida y tu momento difícil. Sólo afirma lo que los datos sostienen (≥3 días por grupo, diferencia ×1,5) |
 | IMC y peso saludable | Zonas de la OMS (18,5 – 24,9) |
 | Metabolismo basal | Mifflin-St Jeor |

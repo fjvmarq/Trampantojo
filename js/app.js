@@ -2,16 +2,17 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.7.1';
-import * as S from './store.js?v=0.7.1';
-import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.7.1';
-import { initComidas } from './comidas.js?v=0.7.1';
-import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.7.1';
-import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.7.1';
-import { messageOfTheDay } from './messages.js?v=0.7.1';
-import { startAmbient } from './ambient.js?v=0.7.1';
+import * as C from './calc.js?v=0.8.0';
+import * as S from './store.js?v=0.8.0';
+import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.8.0';
+import { initComidas } from './comidas.js?v=0.8.0';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.8.0';
+import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.8.0';
+import { messageOfTheDay } from './messages.js?v=0.8.0';
+import { startAmbient } from './ambient.js?v=0.8.0';
+import { qualityMix } from './calidad.js?v=0.8.0';
 
-const VERSION = '0.7.1';
+const VERSION = '0.8.0';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -341,6 +342,7 @@ function renderEvo(s) {
   renderWeek(s);
   renderBadges(s);
   kcalChart($('#chart-kcal'), { food: state.food, target: s.target?.kcal, today: s.today });
+  renderQualityChart(s);
   renderCravingCard($('#craving-card'), state.cravings, s.today, state.food, s.protein ? (s.protein[0] + s.protein[1]) / 2 : null);
 
   const facts = $('#facts');
@@ -446,6 +448,44 @@ function checkBadges(s) {
   if (!fresh.length) return;
   state.meta = { ...(state.meta || {}), badges: stored };
   persist(first ? null : fresh.length === 1 ? `Logro nuevo: ${fresh[0].title}. ${fresh[0].desc}` : `${fresh.length} logros nuevos: ${fresh.map(b => b.title).join(', ')}`);
+}
+
+/* ── la calidad de tus calorías, día a día ──────────────────────────── */
+
+const DAY_LETTER = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+
+function renderQualityChart(s) {
+  const box = $('#chart-quality');
+  box.replaceChildren();
+  const days = Array.from({ length: 14 }, (_, i) => C.addDays(s.today, i - 13));
+  const mixes = days.map(d => ({ d, m: qualityMix(state.food?.[d] || [], state) }));
+  const max = Math.max(1, ...mixes.map(x => x.m.known));
+  const week = mixes.slice(-7).reduce((a, x) => ({ b: a.b + x.m.kcal.b, r: a.r + x.m.kcal.r, m: a.m + x.m.kcal.m }), { b: 0, r: 0, m: 0 });
+  const wk = week.b + week.r + week.m;
+  $('#quality-chart-sub').textContent = wk < 300
+    ? 'Cuando apuntes comidas, aquí verás cada día cuántas de tus calorías son buenas, regulares o de las que conviene evitar.'
+    : `Últimos 7 días: ${Math.round(week.b / wk * 100)} % buenas, ${Math.round(week.r / wk * 100)} % regulares y ${Math.round(week.m / wk * 100)} % a evitar. El objetivo no es comer menos, sino que el verde mande.`;
+  if (wk < 300 && !mixes.some(x => x.m.known)) return;
+  mixes.forEach(({ d, m }) => {
+    const col = document.createElement('div');
+    col.className = 'qcol';
+    const stack = document.createElement('div');
+    stack.className = 'qstack';
+    stack.style.height = `${(m.known / max) * 100}%`;
+    stack.title = m.known ? `${longDate(d)}: ${Math.round(m.pct.b * 100)} % buenas, ${Math.round(m.pct.m * 100)} % a evitar` : longDate(d);
+    ['m', 'r', 'b'].forEach(c => {
+      if (!m.kcal[c]) return;
+      const seg = document.createElement('span');
+      seg.className = `q-${c}`;
+      seg.style.flexGrow = String(m.kcal[c]);
+      stack.appendChild(seg);
+    });
+    const l = document.createElement('span');
+    l.className = 'qday-l';
+    l.textContent = DAY_LETTER[new Date(d + 'T12:00').getDay()];
+    col.append(stack, l);
+    box.appendChild(col);
+  });
 }
 
 function renderBadges(s) {
@@ -1230,7 +1270,28 @@ window.addEventListener('resize', () => {
   resizeTimer = setTimeout(render, 150);
 });
 
-document.addEventListener('visibilitychange', () => { if (!document.hidden && state.profile) render(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  if (state.profile) render();
+  checkForUpdate();
+});
+
+/* Al volver a la app, si en GitHub hay una versión más nueva, se recarga sola.
+   Sin esto, una app que se quedó abierta en segundo plano seguía enseñando la
+   versión vieja hasta cerrarla del todo. No recarga si estás a mitad de algo
+   (una hoja abierta o escribiendo): lo intentará la próxima vez. */
+let lastUpdateCheck = 0;
+async function checkForUpdate() {
+  if (Date.now() - lastUpdateCheck < 60000 || !navigator.onLine) return;
+  lastUpdateCheck = Date.now();
+  try {
+    const res = await fetch(`index.html?check=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const live = (await res.text()).match(/app\.js\?v=([0-9.]+)/)?.[1];
+    const busy = document.querySelector('dialog[open]') || ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+    if (live && live !== VERSION && !busy) location.reload();
+  } catch { /* sin conexión: ya lo miraremos */ }
+}
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(err => console.warn('[sw]', err));

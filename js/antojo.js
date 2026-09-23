@@ -7,23 +7,64 @@
       no, por lo psicológico —, lo que te cuesta y tus propias razones,
    4. tres salidas: esperar 10 minutos, una alternativa sana, o comértelo con
       cabeza (una ración pequeña, apuntada, sin culpa).
+   Y antes que nada, lo más importante de ver: el ejercicio que hace
+   falta para quemarlo, qué TIPO de calorías son (y dónde se notan en el
+   cuerpo), y un cambio con las MISMAS calorías pero buenas. Las calorías solas
+   no dicen si algo te alimenta: el tipo sí.
    Cada antojo se guarda con cómo acabó: con eso sale tu hora peligrosa.
 
    Tono: de apoyo, nunca de culpa. Prohibir del todo suele acabar en atracón;
    decidir tú, no. Las explicaciones son de divulgación general, no médicas. */
 
-import { FOODS_BY_ID, nutrientsFor } from './foods.js?v=0.7.1';
+import { FOODS_BY_ID, nutrientsFor } from './foods.js?v=0.8.0';
+import { foodQuality, TYPES } from './calidad.js?v=0.8.0';
+import { ACT_BY_ID, burned } from './ejercicio.js?v=0.8.0';
 
 /* ── lo que te apetece: una ración típica para ponerle precio ──────── */
+// made: de qué está hecho, para entender qué te llevas a la boca.
+// swap: lo mismo en calorías, pero de las buenas (el test comprueba que
+// cuadra con ±20 %): la cantidad no dice si algo te alimenta, el tipo sí.
 export const CRAVINGS = [
-  { id: 'dulce', label: 'Algo dulce', food: ['gominolas', 'puñado', 1], kind: 'dulce' },
-  { id: 'chocolate', label: 'Chocolate', food: ['chocolate-leche', 'onza', 4], kind: 'dulce' },
-  { id: 'bolleria', label: 'Bollería o galletas', food: ['napolitana', 'unidad', 1], kind: 'dulce' },
-  { id: 'helado', label: 'Helado', food: ['helado', 'tarrina', 1], kind: 'dulce' },
-  { id: 'salado', label: 'Patatas o salado', food: ['patatas-bolsa', 'bolsa pequeña', 1], kind: 'salado' },
-  { id: 'rapida', label: 'Pizza o hamburguesa', food: ['pizza', 'porción', 2], kind: 'salado' },
-  { id: 'alcohol', label: 'Una cerveza o una copa', food: ['cerveza', 'caña', 2], kind: 'alcohol' },
-  { id: 'picar', label: 'Picar lo que sea', food: ['frutos-secos', 'puñado', 1.5], kind: 'picar' },
+  { id: 'dulce', label: 'Algo dulce', food: ['gominolas', 'puñado', 1], kind: 'dulce',
+    made: 'Casi un 80 % es azúcar y jarabe de glucosa; el resto, gelatina, colorantes y aromas.',
+    swap: { label: 'Un plátano', items: [['platano', 'pieza', 1]],
+      why: 'El mismo dulzor y las mismas calorías, pero el azúcar viene dentro de la fruta, con fibra que lo frena, potasio y vitaminas.' } },
+  { id: 'chocolate', label: 'Chocolate', food: ['chocolate-leche', 'onza', 4], kind: 'dulce',
+    made: 'Cerca de la mitad es azúcar; el resto, manteca de cacao, leche en polvo y sólo un 25–35 % de cacao.',
+    swap: { label: 'Skyr con fresas y una onza de chocolate negro rallada', items: [['skyr', 'unidad', 1], ['fresas', 'ración', 1], ['chocolate-negro', 'onza', 1]],
+      why: 'Sigue sabiendo a chocolate —negro, con más cacao y menos azúcar—, y el skyr te da proteína de verdad, que es lo que sacia.' } },
+  { id: 'bolleria', label: 'Bollería o galletas', food: ['napolitana', 'unidad', 1], kind: 'dulce',
+    made: 'Harina blanca, azúcar y mucha grasa —mantequilla o, en la industrial, aceite de palma—, con relleno de crema de cacao.',
+    swap: { label: 'Dos tostadas integrales con aguacate, tomate y un huevo', items: [['pan-integral', 'rebanada', 2], ['aguacate', 'medio', 1], ['tomate', 'unidad', 1], ['huevo', 'unidad', 1]],
+      why: 'Las mismas calorías, pero con cereal integral, la grasa buena del aguacate y la proteína del huevo: te llevan hasta la comida sin pedir más.' } },
+  { id: 'helado', label: 'Helado', food: ['helado', 'tarrina', 1], kind: 'dulce',
+    made: 'Leche, nata y unos 25 g de azúcar por tarrina, con aire batido para que abulte.',
+    swap: { label: 'Yogur griego con arándanos y unas nueces', items: [['yogur-griego', 'unidad', 1], ['arandanos', 'ración', 1], ['nueces', 'puñado', 0.25]],
+      why: 'Frío, cremoso y dulce igual, pero con fruta, la grasa buena de las nueces y sin azúcar añadido.' } },
+  { id: 'salado', label: 'Patatas o salado', food: ['patatas-bolsa', 'bolsa pequeña', 1], kind: 'salado',
+    made: 'Patata en láminas frita en aceite de girasol y con mucha sal: un tercio de la bolsa es aceite.',
+    swap: { label: 'Un puñado de almendras tostadas y unos tomates cherry', items: [['almendras', 'puñado', 1], ['tomate', 'unidad', 1]],
+      why: 'El mismo crujiente, pero la grasa es buena y trae fibra y proteína: con un puñado basta, y la bolsa no.' } },
+  { id: 'rapida', label: 'Pizza o hamburguesa', food: ['pizza', 'porción', 2], kind: 'salado',
+    made: 'Masa de harina blanca, queso fundido, embutido y sal: dos porciones pasan de 2 g de sal, cerca de la mitad de lo recomendado para todo el día.',
+    swap: { label: 'Un bocadillo integral de pollo con tomate y lechuga', items: [['pan-integral', 'media barra', 1], ['pollo-plancha', 'ración', 1], ['tomate', 'unidad', 1], ['lechuga', 'plato', 1]],
+      why: 'Las mismas calorías, con pan integral y mucha más proteína: te llena igual y no te deja pesado.' } },
+  { id: 'embutido', label: 'Chorizo o embutido', food: ['chorizo', 'ración', 1], kind: 'salado',
+    made: 'Carne y grasa de cerdo picadas, sal, pimentón y conservantes (nitritos), curado: tres cuartas partes de sus calorías son grasa, mucha de ella saturada.',
+    swap: { label: 'Atún al natural con tomate, aceitunas y una tostada integral', items: [['atun-natural', 'lata', 1], ['tomate', 'unidad', 1], ['aceitunas', 'unidad', 6], ['pan-integral', 'rebanada', 1], ['aceite', 'cucharadita', 1]],
+      why: 'Proteína de sobra y la grasa buena del aceite y las aceitunas, en vez de grasa saturada, sal y nitritos.' } },
+  { id: 'refresco', label: 'Un refresco', food: ['refresco', 'lata', 1], kind: 'bebida',
+    made: 'Agua con gas y unos 35 g de azúcar por lata —siete terrones—, disueltos para que entren sin que los notes.',
+    swap: { label: 'Una naranja y una mandarina (y agua con gas con limón)', items: [['naranja', 'pieza', 1], ['mandarina', 'pieza', 1]],
+      why: 'Más o menos el mismo azúcar, pero dentro de la fruta: con fibra que lo frena, vitamina C, y masticando, que sacia. Para la burbuja, agua con gas y limón.' } },
+  { id: 'alcohol', label: 'Una cerveza o una copa', food: ['cerveza', 'caña', 2], kind: 'alcohol',
+    made: 'Agua, alcohol y un poco de hidrato de la cebada: dos terceras partes de sus calorías son del propio alcohol.',
+    swap: { label: 'Una cerveza sin alcohol y una ración de boquerones en vinagre', items: [['cerveza-sin', 'caña', 1], ['boquerones', 'ración', 1]],
+      why: 'La caña fría y la tapa, con las mismas calorías: el boquerón trae proteína y omega-3, y tu hígado no tiene que hacer horas extra.' } },
+  { id: 'picar', label: 'Picar lo que sea', food: ['frutos-secos', 'puñado', 1.5], kind: 'picar',
+    made: 'Almendras, cacahuetes, nueces…: grasa buena, fibra y proteína. Son calorías de calidad; el problema es sólo la cantidad, porque se comen a puñados sin darte cuenta.',
+    swap: { label: 'Medio puñado de almendras, una manzana y queso fresco', items: [['almendras', 'puñado', 0.5], ['manzana', 'pieza', 1], ['queso-fresco', 'ración', 1]],
+      why: 'Las mismas calorías en mucho más volumen: fruta que llena y la proteína del queso. Comes más rato, y con cabeza.' } },
 ];
 
 export const MOODS = [
@@ -59,6 +100,12 @@ const ALTS = {
     { label: 'Un puñadito de frutos secos (la mitad del puño)', food: ['almendras', 'puñado', 0.5], avoid: ['frutos secos', 'almendra', 'nuez'] },
     { label: 'Una tostada integral con tomate', food: ['pan-integral', 'rebanada', 1], avoid: ['gluten'] },
     { label: 'Edamame con sal', food: ['edamame', 'ración', 1], avoid: ['soja'] },
+  ],
+  bebida: [
+    { label: 'Agua con gas, hielo y limón', food: ['agua', 'vaso', 1] },
+    { label: 'Una naranja: dulce y con su fibra', food: ['naranja', 'pieza', 1] },
+    { label: 'Una infusión fría con hielo', food: ['infusion', 'taza', 1] },
+    { label: 'Un refresco sin azúcar, si lo necesitas', food: ['refresco-zero', 'lata', 1] },
   ],
   alcohol: [
     { label: 'Una cerveza sin alcohol, bien fría', food: ['cerveza-sin', 'caña', 1] },
@@ -162,16 +209,60 @@ export function explain(ctx) {
 }
 
 /* Lo que cuesta, en cosas que se entienden. */
+export const BURN_WITH = ['andar-rapido', 'correr', 'bici', 'padel'];
+
+// Los minutos de cada ejercicio que hacen falta para gastar esas kcal, con tu peso.
+export function burnTimes(kcal, weightKg, ids = BURN_WITH) {
+  return ids.map(id => {
+    const a = ACT_BY_ID.get(id);
+    const perMin = burned(a.met, weightKg, 1);
+    return { id, label: a.label, min: Math.max(5, Math.round(kcal / perMin / 5) * 5) };
+  });
+}
+
+// 45 → «45 min», 80 → «1 h 20 min», 120 → «2 h»
+export function minutesText(m) {
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? `${h} h ${r} min` : `${h} h`;
+}
+
 export function cost({ kcal, weightKg, remaining, target }) {
-  // andar a paso ligero ≈ 3,5 MET: kcal/min = MET × 3,5 × kg / 200
-  const perMin = 3.5 * 3.5 * (weightKg || 75) / 200;
+  const times = burnTimes(kcal, weightKg);
   return {
     kcal,
-    walkMin: Math.round(kcal / perMin / 5) * 5,
+    times,
+    walkMin: times[0].min,
     pctRemaining: remaining > 0 ? Math.round(kcal / remaining * 100) : null,
     pctTarget: target ? Math.round(kcal / target * 100) : null,
     kgYearIfDaily: kcal * 365 / 7700,
   };
+}
+
+/* ── qué tipo de calorías son ───────────────────────────────────────── */
+
+const GOOD_FIRST = t => (TYPES[t]?.tone === 'good' ? 0 : TYPES[t]?.tone === 'meh' ? 1 : 2);
+
+// Las etiquetas de un antojo (las de su alimento).
+export function cravingQuality(craving) {
+  return foodQuality(FOODS_BY_ID.get(craving.food[0])) || { q: 'r', tags: [] };
+}
+
+// El cambio de mismas calorías: sus raciones, sus totales y sus etiquetas (las buenas primero).
+export function swapFor(craving) {
+  const sw = craving.swap;
+  if (!sw) return null;
+  const parts = sw.items.map(portionOf).filter(Boolean);
+  const sum = k => parts.reduce((a, x) => a + x[k], 0);
+  const tags = [...new Set(parts.flatMap(x => foodQuality(x.item)?.tags || []))].sort((a, b) => GOOD_FIRST(a) - GOOD_FIRST(b));
+  return { label: sw.label, why: sw.why, parts, kcal: sum('kcal'), p: sum('p'), c: sum('c'), f: sum('f'), tags };
+}
+
+// Cuánto sacia, por lo que trae: proteína, fibra… o sólo azúcar.
+export function satiety(tags = [], proteinG = 0) {
+  const good = tags.some(t => ['proteina', 'fibra', 'legumbre', 'integral', 'grasa-buena'].includes(t)) || proteinG >= 10;
+  const bad = tags.some(t => ['azucar', 'liquido', 'alcohol', 'refinado', 'ultra'].includes(t));
+  return good && !bad ? 'mucho' : good ? 'algo' : bad ? 'poco' : 'algo';
 }
 
 export function alternatives(kind, hunger, habits) {

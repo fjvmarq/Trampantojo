@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/app.css?v=0.7.1">
+  <link rel="stylesheet" href="css/app.css?v=0.8.0">
 </head>
 <body>
   <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
@@ -112,6 +112,12 @@
           <div class="meter" role="presentation"><span id="kcal-bar"></span></div>
           <p class="card-sub" id="kcal-sub"></p>
           <p class="card-foot" id="macros"></p>
+          <div class="qday" id="qday" hidden>
+            <p class="eyebrow">Qué tipo de calorías</p>
+            <div class="qbar" role="presentation"><span class="q-b" id="qbar-b"></span><span class="q-r" id="qbar-r"></span><span class="q-m" id="qbar-m"></span></div>
+            <p class="qday-legend" id="qday-legend"></p>
+            <p class="card-foot" id="qday-note"></p>
+          </div>
         </div>
         <div class="card ideas-card" id="ideas-card" hidden></div>
         <div id="meals"></div>
@@ -152,6 +158,11 @@
           <p class="eyebrow">Calorías por día</p>
           <p class="card-sub" id="kcal-chart-sub">Lo que has apuntado cada día frente a tu objetivo.</p>
           <div class="chart-box" id="chart-kcal"></div>
+        </div>
+        <div class="card">
+          <p class="eyebrow">La calidad de tus calorías</p>
+          <p class="card-sub" id="quality-chart-sub"></p>
+          <div class="qchart" id="chart-quality"></div>
         </div>
         <p class="section-label">Tus logros</p>
         <div class="badges" id="badges"></div>
@@ -398,6 +409,8 @@
     <div id="food-portion-view" hidden>
       <p class="portion-name" id="portion-name"></p>
       <p class="card-foot" id="portion-per100"></p>
+      <p class="qchip-line" id="portion-quality" hidden></p>
+      <div class="type-list" id="portion-types"></div>
       <p class="section-label">Ración</p>
       <div class="ideas" id="portion-units"></div>
       <div class="group spaced-group">
@@ -473,15 +486,39 @@
     </div>
 
     <div id="crv-step3" hidden>
+      <div class="card crv-burn-card">
+        <p class="eyebrow">Si te lo comes</p>
+        <p class="crv-portion" id="crv-portion"></p>
+        <p class="hero-value crv-kcal" id="crv-kcal"></p>
+        <p class="card-sub">Para quemarlo tendrías que hacer una de estas:</p>
+        <div class="burn-grid" id="crv-burn"></div>
+        <p class="card-foot" id="crv-cost"></p>
+      </div>
+      <div class="card crv-kind-card">
+        <p class="eyebrow">Qué tipo de calorías son</p>
+        <p class="qchip-line" id="crv-qchip"></p>
+        <p class="card-sub" id="crv-made"></p>
+        <div class="type-list" id="crv-tags"></div>
+      </div>
+      <div class="card crv-body-card" id="crv-body-card">
+        <p class="eyebrow">Dónde se nota en tu cuerpo</p>
+        <div class="body-wrap">
+          <div class="body-fig" id="crv-body"></div>
+          <ul class="body-legend" id="crv-body-legend"></ul>
+        </div>
+        <p class="card-foot" id="crv-body-note"></p>
+      </div>
+      <div class="card crv-swap-card" id="crv-swap-card">
+        <p class="eyebrow" id="crv-swap-title">Mismas calorías, pero buenas</p>
+        <p class="message-title" id="crv-swap-name"></p>
+        <div class="swap-compare" id="crv-swap-compare"></div>
+        <p class="message-text" id="crv-swap-why"></p>
+        <button type="button" class="btn primary block" id="crv-swap-take">Me tomo esto en su lugar</button>
+      </div>
       <div class="card">
         <p class="eyebrow">Por qué te pasa</p>
         <div class="crv-why" id="crv-why"></div>
         <p class="card-foot" id="crv-basis"></p>
-      </div>
-      <div class="card">
-        <p class="eyebrow">Lo que te cuesta</p>
-        <p class="hero-value crv-kcal" id="crv-kcal"></p>
-        <p class="card-sub" id="crv-cost"></p>
       </div>
       <div class="card reasons" id="crv-reasons-card">
         <p class="eyebrow">Tus razones</p>
@@ -569,6 +606,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.7.1"></script>
+  <script type="module" src="js/app.js?v=0.8.0"></script>
 </body>
 </html>

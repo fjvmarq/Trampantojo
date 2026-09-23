@@ -491,6 +491,87 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 .crv-why .message-title { margin-top: 10px; }
 .crv-why .message-title:first-child { margin-top: 2px; }
 .crv-kcal { font-size: 38px; }
+.crv-portion { margin: 2px 0 2px; font-size: 15px; color: var(--ink-2); }
+
+/* si te lo comes: los ejercicios, en una rejilla de dos */
+.burn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 4px; }
+.burn-cell {
+  display: grid; grid-template-columns: 30px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center;
+  padding: 10px 12px; border-radius: var(--radius-sm); background: var(--hover);
+}
+.burn-ico { grid-row: 1 / 3; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.burn-ico svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.burn-cell strong { font-size: 16.5px; letter-spacing: -0.01em; line-height: 1.2; }
+.burn-cell small { font-size: 12.5px; color: var(--ink-2); line-height: 1.2; }
+
+/* el semáforo de las calorías */
+.qdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; flex: none; background: var(--ink-4); }
+.qdot.q-b, .qbar .q-b { background: var(--ok); }
+.qdot.q-r, .qbar .q-r { background: var(--warn); }
+.qdot.q-m, .qbar .q-m { background: var(--bad); }
+.qchip { display: inline-block; padding: 3px 10px; border-radius: 980px; font-size: 13px; font-weight: 700; margin-right: 4px; }
+.qchip.q-b { background: var(--ok-soft); color: var(--ok-text); }
+.qchip.q-r { background: var(--warn-soft); color: var(--warn-text); }
+.qchip.q-m { background: var(--bad-soft); color: var(--bad-text); }
+.qchip-line { margin: 4px 0 6px; font-size: 14px; color: var(--ink-2); line-height: 1.6; }
+
+/* los porqués, desplegables */
+.type-list { margin-top: 6px; }
+.type-item { border-top: 1px solid var(--line); padding: 2px 0; }
+.type-item summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 0; font-weight: 700; font-size: 16px; }
+.type-item summary::-webkit-details-marker { display: none; }
+.type-item summary::after { content: ''; margin-left: auto; width: 8px; height: 8px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); transform: rotate(45deg); transition: transform var(--dur); }
+.type-item[open] summary::after { transform: rotate(-135deg); }
+.type-item .message-text { padding: 0 0 12px 18px; }
+.tdot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.tone-bad.tdot, .body-legend .tone-bad::before { background: var(--bad); }
+.tone-meh.tdot, .body-legend .tone-meh::before { background: var(--warn); }
+.tone-good.tdot, .body-legend .tone-good::before { background: var(--ok); }
+
+/* el mapa del cuerpo */
+.body-wrap { display: grid; grid-template-columns: 104px 1fr; gap: 14px; align-items: center; margin-top: 6px; }
+.body-map { width: 104px; height: auto; display: block; }
+.body-sil { fill: color-mix(in srgb, var(--ink) 9%, transparent); }
+.bz { opacity: 0.8; }
+.bz-bad { fill: var(--bad); }
+.bz-meh { fill: var(--warn); }
+.bz-good { fill: var(--ok); }
+@media (prefers-reduced-motion: no-preference) {
+  .bz-bad { animation: bz-pulse 2.4s ease-in-out infinite; }
+  @keyframes bz-pulse { 50% { opacity: 0.45; } }
+}
+.body-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.body-legend li { position: relative; padding-left: 16px; font-size: 13.5px; line-height: 1.4; color: var(--ink-2); }
+.body-legend li::before { content: ''; position: absolute; left: 0; top: 5px; width: 9px; height: 9px; border-radius: 50%; }
+.body-legend strong { color: var(--ink); }
+
+/* mismas calorías: la comparación en dos columnas */
+.swap-compare { display: grid; grid-template-columns: auto 1fr 1fr; gap: 1px; margin: 10px 0 10px; border-radius: var(--radius-sm); overflow: hidden; background: var(--line); font-size: 13.5px; }
+.swap-compare span { background: var(--card); padding: 8px 9px; line-height: 1.3; }
+.swap-compare .sc-head { font-weight: 700; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-3); }
+.swap-compare .sc-head:nth-child(3) { color: var(--ok-text); }
+.swap-compare .sc-label { color: var(--ink-3); font-weight: 600; }
+.swap-compare .sc-bad { color: var(--ink-2); }
+.swap-compare .sc-good { color: var(--ink); font-weight: 600; background: color-mix(in srgb, var(--ok) 7%, var(--card)); }
+.crv-swap-card { border-color: color-mix(in srgb, var(--ok) 35%, var(--line)); }
+
+/* la calidad del día (Comidas) y de los últimos 14 (Evolución) */
+.qday { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.qbar { display: flex; height: 10px; border-radius: 980px; overflow: hidden; background: var(--neutral-soft); margin: 6px 0 8px; }
+.qbar span { display: block; height: 100%; transition: width 0.4s ease; }
+.qday-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+.qchart { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 5px; height: 150px; margin-top: 10px; align-items: end; }
+.qcol { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-end; height: 100%; gap: 4px; }
+.qstack { display: flex; flex-direction: column; min-height: 2px; border-radius: 6px; overflow: hidden; background: var(--neutral-soft); }
+.qstack span { display: block; min-height: 2px; }
+.qstack .q-b { background: var(--ok); }
+.qstack .q-r { background: var(--warn); }
+.qstack .q-m { background: var(--bad); }
+.qday-l { font-size: 11px; color: var(--ink-3); text-align: center; flex: none; }
+.log-date .qdot { margin-right: 7px; }
+#portion-types { margin: 0 0 4px; }
+.crv-swap-card .btn { margin-top: 12px; }
 .reasons { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
 .reasons.empty-reasons .message-text { font-size: 14.5px; }
 .crv-ring { position: relative; width: 220px; height: 220px; margin: 10px auto 18px; }

@@ -1,6 +1,8 @@
 /* Trampantojo — la hoja de «Tengo un antojo» (la lógica está en antojo.js). */
 
-import { CRAVINGS, MOODS, HUNGER, SLEEP, explain, cost, alternatives, portionOf, smallerPortion, cravingStats, analyzeCravings, BLOCKS } from './antojo.js?v=0.7.1';
+import { CRAVINGS, MOODS, HUNGER, SLEEP, explain, cost, alternatives, portionOf, smallerPortion, cravingStats, analyzeCravings, BLOCKS, cravingQuality, swapFor, satiety, minutesText } from './antojo.js?v=0.8.0';
+import { TYPES, QLABEL, bodyZones, foodQuality, tagLine } from './calidad.js?v=0.8.0';
+import { bodySvg, ZONE_NAMES } from './cuerpo.js?v=0.8.0';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 let intFmt;
@@ -10,6 +12,14 @@ const int = v => intFmt.format(Math.round(v));
 const kg1 = v => new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(v);
 
 const WAIT_SECONDS = 10 * 60;
+
+// iconos de línea para los ejercicios (mismo trazo que las pestañas)
+const BURN_ICONS = {
+  'andar-rapido': '<svg viewBox="0 0 24 24"><circle cx="13" cy="4" r="2"/><path d="M11 21l2-6-3-3 1-5 4 3 3 1M7 12l2-4M9 17l-3 4"/></svg>',
+  correr: '<svg viewBox="0 0 24 24"><circle cx="15" cy="4" r="2"/><path d="M6 20l4-5 3 1 1-5-4-2-3 3M13 11l3 3 4-1M10 15l-1 2"/></svg>',
+  bici: '<svg viewBox="0 0 24 24"><circle cx="6" cy="17" r="3.5"/><circle cx="18" cy="17" r="3.5"/><path d="M6 17l4-7h5l3 7M10 10l-1-3H7M15 10l-2 7"/></svg>',
+  padel: '<svg viewBox="0 0 24 24"><ellipse cx="10" cy="9" rx="6" ry="6.5"/><path d="M14 14l5 6M19 5.5a1.5 1.5 0 1 0 0 .01"/></svg>',
+};
 const WAIT_TIPS = [
   'Bebe un vaso grande de agua, despacio.',
   'Sal a dar una vuelta a la manzana, aunque sean cinco minutos.',
@@ -56,7 +66,10 @@ export function initAntojo(ctx) {
       b.type = 'button';
       b.className = 'crv-type';
       const l = document.createElement('span'); l.className = 'crv-type-label'; l.textContent = c.label;
-      const k = document.createElement('span'); k.className = 'crv-type-kcal'; k.textContent = p ? `~${int(p.kcal)} kcal` : '';
+      const q = cravingQuality(c);
+      const k = document.createElement('span'); k.className = 'crv-type-kcal';
+      const dot = document.createElement('span'); dot.className = `qdot q-${q.q}`; dot.setAttribute('aria-hidden', 'true');
+      k.append(dot, document.createTextNode(p ? `~${int(p.kcal)} kcal` : ''));
       b.append(l, k);
       b.addEventListener('click', () => { cur.type = c.id; step2(); });
       grid.appendChild(b);
@@ -137,12 +150,9 @@ export function initAntojo(ctx) {
 
     const p = portionOf(craving.food);
     const remaining = s.target ? s.target.kcal - eaten : null;
-    const c = cost({ kcal: p.kcal, weightKg: s.trendKg, remaining, target: s.target?.kcal });
-    $('#crv-kcal').textContent = `${int(c.kcal)} kcal`;
-    const bits = [`${portionText(p)} de ${p.item.n.toLowerCase()}`, `unos ${c.walkMin} minutos andando a paso ligero`];
-    if (c.pctRemaining != null && c.pctRemaining > 0 && logged) bits.push(`el ${c.pctRemaining} % de lo que te queda hoy`);
-    else if (c.pctTarget) bits.push(`el ${c.pctTarget} % de todo tu día`);
-    $('#crv-cost').textContent = `${bits.join(' · ')}. Un día no es nada; hecho cada día a esta hora, serían ${kg1(c.kgYearIfDaily)} kg en un año.`;
+    renderBurn(p, s, remaining, logged);
+    renderKind(craving, p);
+    renderSwap(craving, p);
 
     const reasonsText = (st.habits?.reasons || '').trim();
     $('#crv-reasons').textContent = reasonsText || 'Todavía no has escrito tus razones para adelgazar. Hazlo en Perfil › Tus razones: leídas en este momento, convencen más que cualquier cosa que te diga yo.';
@@ -151,6 +161,120 @@ export function initAntojo(ctx) {
     show('step3');
     $('#craving-dialog').scrollTop = 0;
   }
+
+  /* ── si te lo comes: el ejercicio que hace falta para quemarlo ────── */
+
+  function renderBurn(p, s, remaining, logged) {
+    const kg = s.trendKg || getState().profile?.startKg || 75;
+    const c = cost({ kcal: p.kcal, weightKg: kg, remaining, target: s.target?.kcal });
+    $('#crv-portion').textContent = `${cap(portionText(p))} de ${p.item.n.toLowerCase()}`;
+    $('#crv-kcal').textContent = `${int(c.kcal)} kcal`;
+    const grid = $('#crv-burn');
+    grid.replaceChildren();
+    c.times.forEach(t => {
+      const cell = document.createElement('div');
+      cell.className = 'burn-cell';
+      cell.innerHTML = `<span class="burn-ico" aria-hidden="true">${BURN_ICONS[t.id] || ''}</span>`;
+      const v = document.createElement('strong'); v.textContent = minutesText(t.min);
+      const l = document.createElement('small'); l.textContent = t.label.toLowerCase();
+      cell.append(v, l);
+      grid.appendChild(cell);
+    });
+    const bits = [];
+    if (c.pctRemaining != null && c.pctRemaining > 0 && logged) bits.push(`Es el ${c.pctRemaining} % de lo que te queda hoy.`);
+    else if (c.pctTarget) bits.push(`Es el ${c.pctTarget} % de todo tu día.`);
+    bits.push(`Un día no es nada; hecho cada día, serían ${kg1(c.kgYearIfDaily)} kg en un año.`);
+    bits.push(`Calculado con tu peso (${kg1(kg)} kg); es orientativo.`);
+    $('#crv-cost').textContent = bits.join(' ');
+  }
+
+  /* ── qué tipo de calorías son, y dónde se notan ───────────────────── */
+
+  function renderKind(craving, p) {
+    const q = cravingQuality(craving);
+    const chip = $('#crv-qchip');
+    chip.replaceChildren();
+    const c = document.createElement('span'); c.className = `qchip q-${q.q}`; c.textContent = QLABEL[q.q];
+    chip.appendChild(c);
+    if (q.tags.length) chip.appendChild(document.createTextNode(` ${tagLine(q.tags, 4)}`));
+    $('#crv-made').textContent = craving.made || '';
+    const list = $('#crv-tags');
+    list.replaceChildren();
+    q.tags.forEach((t, i) => {
+      const type = TYPES[t];
+      if (!type) return;
+      const d = document.createElement('details');
+      d.className = `type-item tone-${type.tone}`;
+      if (i === 0) d.open = true;
+      const sum = document.createElement('summary');
+      const dot = document.createElement('span'); dot.className = `tdot tone-${type.tone}`; dot.setAttribute('aria-hidden', 'true');
+      sum.append(dot, document.createTextNode(type.label));
+      const x = document.createElement('p'); x.className = 'message-text'; x.textContent = type.text;
+      d.append(sum, x);
+      list.appendChild(d);
+    });
+    // el mapa del cuerpo
+    const zones = bodyZones(q.tags);
+    $('#crv-body-card').hidden = !zones.length;
+    $('#crv-body').innerHTML = bodySvg(zones);
+    const legend = $('#crv-body-legend');
+    legend.replaceChildren();
+    zones.forEach(z => {
+      const li = document.createElement('li');
+      li.className = `tone-${z.tone}`;
+      const [head, ...rest] = z.text.split(':');
+      const b = document.createElement('strong'); b.textContent = head;
+      li.append(b, document.createTextNode(rest.length ? `:${rest.join(':')}` : ''));
+      legend.appendChild(li);
+    });
+    const pushesFat = zones.some(z => z.tone === 'bad' && (z.zone === 'abdomen' || z.zone === 'higado'));
+    $('#crv-body-note').textContent = pushesFat
+      ? 'La grasa no va al sitio del alimento que la trae: lo que sobra se guarda donde decide tu genética. Lo que sí hacen el azúcar, el alcohol y los ultraprocesados es empujar hacia la grasa de la barriga y la del hígado, que es la que más riesgo tiene para la salud.'
+      : q.q === 'b' ? 'Son calorías que trabajan para ti. Aquí sólo cuenta la cantidad.' : '';
+  }
+
+  /* ── mismas calorías, pero buenas ─────────────────────────────────── */
+
+  let swapNow = null;
+
+  function renderSwap(craving, p) {
+    const sw = swapFor(craving);
+    swapNow = sw;
+    $('#crv-swap-card').hidden = !sw;
+    if (!sw) return;
+    const q = cravingQuality(craving);
+    $('#crv-swap-title').textContent = q.q === 'b' ? 'Mismas calorías, más volumen' : 'Mismas calorías, pero buenas';
+    $('#crv-swap-name').textContent = sw.label;
+    $('#crv-swap-why').textContent = sw.why;
+    const box = $('#crv-swap-compare');
+    box.replaceChildren();
+    const sat = { mucho: 'Mucho', algo: 'Algo', poco: 'Poco' };
+    const rows = [
+      ['', craving.label, 'El cambio'],
+      ['Calorías', `${int(p.kcal)} kcal`, `${int(sw.kcal)} kcal`],
+      ['Proteína', `${int(p.p)} g`, `${int(sw.p)} g`],
+      ['Te sacia', sat[satiety(q.tags, p.p)], sat[satiety(sw.tags, sw.p)]],
+      ['Qué son', tagLine(q.tags, 3) || QLABEL[q.q], tagLine(sw.tags, 3)],
+    ];
+    rows.forEach((r, i) => {
+      r.forEach((cell, j) => {
+        const el = document.createElement('span');
+        el.className = i === 0 ? 'sc-head' : j === 0 ? 'sc-label' : j === 1 ? 'sc-bad' : 'sc-good';
+        if (i === 0 && j === 1) el.classList.add(`q-${q.q}`);
+        el.textContent = cell;
+        box.appendChild(el);
+      });
+    });
+  }
+
+  function takeSwap() {
+    if (!swapNow) return;
+    const craving = CRAVINGS.find(c => c.id === cur.type);
+    swapNow.parts.forEach(logFood);
+    finish('alternativa', `Buen cambio: ${swapNow.label.toLowerCase()}. Las mismas calorías que ${craving.label.toLowerCase()}, pero de las que te alimentan.`);
+  }
+
+  function cap(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
 
   function portionText(p) {
     if (p.qty === 1) return `1 ${p.unit}`;
@@ -212,6 +336,8 @@ export function initAntojo(ctx) {
       const main = document.createElement('span'); main.className = 'log-main';
       const t = document.createElement('span'); t.className = 'log-date'; t.textContent = a.label;
       main.appendChild(t);
+      const aq = p ? foodQuality(p.item) : null;
+      if (aq?.tags?.length) { const sub = document.createElement('span'); sub.className = 'log-sub'; sub.textContent = tagLine(aq.tags, 3); main.appendChild(sub); }
       const side = document.createElement('span'); side.className = 'log-side';
       const k = document.createElement('span'); k.className = 'log-change'; k.textContent = p ? `${int(p.kcal)} kcal` : '';
       side.appendChild(k);
@@ -271,6 +397,7 @@ export function initAntojo(ctx) {
   $('#crv-go').addEventListener('click', step3);
   $('#crv-wait').addEventListener('click', startWait);
   $('#crv-alt').addEventListener('click', showAlts);
+  $('#crv-swap-take').addEventListener('click', takeSwap);
   $('#crv-eat').addEventListener('click', showEat);
   $('#crv-passed').addEventListener('click', () => finish('resistido', 'Se ha pasado solo, como las olas. Esto es lo que entrena el hábito.'));
   $('#crv-early').addEventListener('click', () => finish('resistido', 'Se te ha pasado antes de los diez minutos. Muy bien.'));

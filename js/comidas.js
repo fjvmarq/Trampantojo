@@ -8,9 +8,10 @@
    Cada apunte guarda sus calorías y nutrientes CALCULADOS en el momento: si la
    tabla cambia en una versión futura, lo que comiste ayer no cambia. */
 
-import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.7.1';
-import { kg1 } from './charts.js?v=0.7.1';
-import { suggest } from './ideas.js?v=0.7.1';
+import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.8.0';
+import { kg1 } from './charts.js?v=0.8.0';
+import { suggest } from './ideas.js?v=0.8.0';
+import { foodQuality, entryQuality, productQuality, qualityMix, tagLine, TYPES, QLABEL, QSHORT } from './calidad.js?v=0.8.0';
 
 export const MEALS = [
   { id: 'desayuno', label: 'Desayuno' },
@@ -81,16 +82,23 @@ export function initComidas(ctx) {
 
   function extras() {
     const st = getState();
-    const dishes = (st.dishes || []).map(d => ({ id: d.id, n: d.name, a: [], k: d.k, p: d.p, c: d.c, f: d.f, u: [['ración', d.grams || 100]], src: 'plato' }));
-    const products = Object.values(st.products || {}).map(pr => ({ id: pr.code, n: pr.name, a: pr.brand ? [pr.brand] : [], k: pr.k, p: pr.p, c: pr.c, f: pr.f, u: pr.u, src: 'producto' }));
+    const dishes = (st.dishes || []).map(d => ({ id: d.id, n: d.name, a: [], k: d.k, p: d.p, c: d.c, f: d.f, u: [['ración', d.grams || 100]], src: 'plato', ...dishQ(d) }));
+    const products = Object.values(st.products || {}).map(pr => ({ id: pr.code, n: pr.name, a: pr.brand ? [pr.brand] : [], k: pr.k, p: pr.p, c: pr.c, f: pr.f, u: pr.u, src: 'producto', q: pr.q, qt: pr.qt }));
     return [...dishes, ...products];
+  }
+
+  // un plato guardado: su semáforo es el de la mayoría de sus calorías
+  function dishQ(d) {
+    if (!d.qmix) return {};
+    const q = ['b', 'r', 'm'].reduce((a, k) => ((d.qmix[k] || 0) > (d.qmix[a] || 0) ? k : a), 'b');
+    return { q, qt: [] };
   }
 
   function itemFromRef(src, ref) {
     const st = getState();
     if (src === 'tabla') { const f = FOODS_BY_ID.get(ref); return f ? { ...f, src } : null; }
-    if (src === 'plato') { const d = (st.dishes || []).find(x => x.id === ref); return d ? { id: d.id, n: d.name, a: [], k: d.k, p: d.p, c: d.c, f: d.f, u: [['ración', d.grams || 100]], src } : null; }
-    if (src === 'producto') { const pr = st.products?.[ref]; return pr ? { id: pr.code, n: pr.name, a: [], k: pr.k, p: pr.p, c: pr.c, f: pr.f, u: pr.u, src } : null; }
+    if (src === 'plato') { const d = (st.dishes || []).find(x => x.id === ref); return d ? { id: d.id, n: d.name, a: [], k: d.k, p: d.p, c: d.c, f: d.f, u: [['ración', d.grams || 100]], src, ...dishQ(d) } : null; }
+    if (src === 'producto') { const pr = st.products?.[ref]; return pr ? { id: pr.code, n: pr.name, a: [], k: pr.k, p: pr.p, c: pr.c, f: pr.f, u: pr.u, src, q: pr.q, qt: pr.qt } : null; }
     return null;
   }
 
@@ -144,13 +152,19 @@ export function initComidas(ctx) {
     setTimeout(() => $('#food-q').focus(), 60);
   }
 
-  function resultRow(label, sub, kcalText, onClick) {
+  function resultRow(label, sub, kcalText, onClick, q) {
     const li = document.createElement('li');
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'log-row';
     const main = document.createElement('span'); main.className = 'log-main';
-    const t = document.createElement('span'); t.className = 'log-date'; t.textContent = label;
+    const t = document.createElement('span'); t.className = 'log-date';
+    if (q) {
+      const dot = document.createElement('span'); dot.className = `qdot q-${q}`;
+      dot.setAttribute('role', 'img'); dot.setAttribute('aria-label', QLABEL[q]);
+      t.appendChild(dot);
+    }
+    t.appendChild(document.createTextNode(label));
     main.appendChild(t);
     if (sub) { const s = document.createElement('span'); s.className = 'log-sub'; s.textContent = sub; main.appendChild(s); }
     const side = document.createElement('span'); side.className = 'log-side';
@@ -180,7 +194,8 @@ export function initComidas(ctx) {
         .map(id => ({ item: { ...FOODS_BY_ID.get(id), src: 'tabla' }, unit: FOODS_BY_ID.get(id).u[0][0], qty: 1 }));
       items.forEach(({ item, unit, qty }) => {
         const e = entryFor(item, unit, qty);
-        list.appendChild(resultRow(item.n, `${portionText(e)}${srcLabel[item.src] ? ' · ' + srcLabel[item.src] : ''}`, `${int(e.kcal)} kcal`, () => openPortion(item, unit, qty)));
+        const fq = foodQuality(item);
+        list.appendChild(resultRow(item.n, `${portionText(e)}${srcLabel[item.src] ? ' · ' + srcLabel[item.src] : ''}`, `${int(e.kcal)} kcal`, () => openPortion(item, unit, qty), fq?.q));
       });
       return;
     }
@@ -226,7 +241,9 @@ export function initComidas(ctx) {
     found.forEach(item => {
       const unit = item.u?.[0]?.[0] || 'g';
       const e = entryFor(item, unit, unit === 'g' ? 100 : 1);
-      list.appendChild(resultRow(item.n, `${portionText(e)}${srcLabel[item.src] ? ' · ' + srcLabel[item.src] : ''} · ${int(item.k)} kcal/100 g`, `${int(e.kcal)} kcal`, () => openPortion(item, unit, 1)));
+      const fq = foodQuality(item);
+      const kind = fq?.tags?.length ? tagLine(fq.tags, 2) : `${int(item.k)} kcal/100 g`;
+      list.appendChild(resultRow(item.n, `${portionText(e)}${srcLabel[item.src] ? ' · ' + srcLabel[item.src] : ''} · ${kind}`, `${int(e.kcal)} kcal`, () => openPortion(item, unit, 1), fq?.q));
     });
     if (!found.length) {
       list.appendChild(resultRow('Apuntarlo a mano', 'con sus calorías, si las sabes', '', () => openManual(q)));
@@ -240,6 +257,7 @@ export function initComidas(ctx) {
     showView('portion');
     $('#portion-name').textContent = item.n;
     $('#portion-per100').textContent = `${int(item.k)} kcal por 100 g · ${kg1(item.p)} g de proteína`;
+    renderPortionQuality(item);
     const units = $('#portion-units');
     units.replaceChildren();
     [...(item.u || []), ['g', 1]].forEach(([n, g]) => {
@@ -260,6 +278,31 @@ export function initComidas(ctx) {
     $('#portion-add').textContent = entry ? 'Guardar' : 'Añadir';
     $('#portion-delete').hidden = !entry;
     updatePortion();
+  }
+
+  function renderPortionQuality(item) {
+    const fq = foodQuality(item);
+    const line = $('#portion-quality');
+    const types = $('#portion-types');
+    line.replaceChildren();
+    types.replaceChildren();
+    line.hidden = !fq;
+    if (!fq) return;
+    const chip = document.createElement('span'); chip.className = `qchip q-${fq.q}`; chip.textContent = QLABEL[fq.q];
+    line.appendChild(chip);
+    if (fq.tags.length) line.appendChild(document.createTextNode(` ${tagLine(fq.tags, 4)}`));
+    fq.tags.forEach(t => {
+      const type = TYPES[t];
+      if (!type) return;
+      const d = document.createElement('details');
+      d.className = `type-item tone-${type.tone}`;
+      const sum = document.createElement('summary');
+      const dot = document.createElement('span'); dot.className = `tdot tone-${type.tone}`; dot.setAttribute('aria-hidden', 'true');
+      sum.append(dot, document.createTextNode(`¿Por qué? ${type.label}`));
+      const x = document.createElement('p'); x.className = 'message-text'; x.textContent = type.text;
+      d.append(sum, x);
+      types.appendChild(d);
+    });
   }
 
   function updatePortion() {
@@ -386,7 +429,7 @@ export function initComidas(ctx) {
     if (!navigator.onLine) { status.textContent = 'Sin conexión no puedo buscar el producto. Prueba luego, o apúntalo a mano.'; return; }
     status.textContent = 'Buscando…';
     try {
-      const fields = 'product_name,product_name_es,brands,nutriments,serving_quantity';
+      const fields = 'product_name,product_name_es,brands,nutriments,serving_quantity,nova_group,nutriscore_grade';
       const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${fields}`);
       const j = await res.json();
       const p = j.product;
@@ -398,9 +441,15 @@ export function initComidas(ctx) {
       const units = [['100 g', 100]];
       if (Number(p.serving_quantity) > 0) units.unshift(['ración', Number(p.serving_quantity)]);
       st.products = st.products || {};
+      const pq = productQuality({
+        nova: Number(p.nova_group) || null, nutriscore: p.nutriscore_grade,
+        sugars: Number(n.sugars_100g) || 0, satFat: Number(n['saturated-fat_100g']) || 0, salt: Number(n.salt_100g) || 0,
+        fiber: Number(n.fiber_100g) || 0, protein: Number(n.proteins_100g) || 0, kcal: k,
+      });
       st.products[code] = {
         code, name: withBrand(name, p.brands), brand: p.brands || '',
         k: Math.round(k), p: Number(n.proteins_100g) || 0, c: Number(n.carbohydrates_100g) || 0, f: Number(n.fat_100g) || 0, u: units,
+        ...(pq ? { q: pq.q, qt: pq.tags } : {}),
       };
       persist();
       openPortion(itemFromRef('producto', code), units[0][0], 1);
@@ -448,9 +497,11 @@ export function initComidas(ctx) {
     const per = x => Math.round(x / servings * 10) / 10;
     // por 100 g si sabemos los gramos; si no, «1 ración = 100 g» para que la tabla funcione igual
     const g = grams > 0 ? grams : 100;
+    const mix = qualityMix(items, st);
     st.dishes = [...(st.dishes || []), {
       id: newId('p'), name, grams: Math.round(g),
       k: Math.round(t.kcal / servings / g * 100), p: per(t.p) / g * 100, c: per(t.c) / g * 100, f: per(t.f) / g * 100,
+      ...(mix.known ? { qmix: mix.pct } : {}),
     }];
     if (persist(`«${name}» guardado: la próxima vez es un toque.`)) { ddlg.close(); render(); }
   });
@@ -478,6 +529,7 @@ export function initComidas(ctx) {
     const pr = s.protein;
     $('#macros').textContent = `${int(tot.p)} g de proteína${pr ? ` (lo tuyo: ${int(pr[0])}–${int(pr[1])} g)` : ''} · ${int(tot.c)} g hidratos · ${int(tot.f)} g grasa`;
 
+    renderDayQuality(entries, st, isToday);
     renderIdeas(s, date, isToday, tot, target);
 
     const wrap = $('#meals');
@@ -491,7 +543,7 @@ export function initComidas(ctx) {
       const ul = document.createElement('ul');
       ul.className = 'group log';
       items.forEach(e => {
-        ul.appendChild(resultRow(e.name, portionText(e), `${int(e.kcal)} kcal`, () => openEdit(date, e)));
+        ul.appendChild(resultRow(e.name, portionText(e), `${int(e.kcal)} kcal`, () => openEdit(date, e), entryQuality(e, st)?.q));
       });
       const add = resultRow(`Añadir a ${meal.label.toLowerCase()}`, null, '', () => openAdd(meal.id));
       add.querySelector('.log-row').classList.add('add');
@@ -516,6 +568,33 @@ export function initComidas(ctx) {
         if (persist('Plato borrado.')) render();
       }));
     });
+  }
+
+  /* ── qué tipo de calorías llevas hoy ──────────────────────────────── */
+
+  function renderDayQuality(entries, st, isToday) {
+    const box = $('#qday');
+    const mix = qualityMix(entries, st);
+    box.hidden = mix.known < 50;
+    if (box.hidden) return;
+    const pc = c => Math.round(mix.pct[c] * 100);
+    ['b', 'r', 'm'].forEach(c => { $(`#qbar-${c}`).style.width = `${mix.pct[c] * 100}%`; });
+    const legend = $('#qday-legend');
+    legend.replaceChildren();
+    ['b', 'r', 'm'].filter(c => pc(c) > 0).forEach(c => {
+      const sp = document.createElement('span');
+      const dot = document.createElement('span'); dot.className = `qdot q-${c}`; dot.setAttribute('aria-hidden', 'true');
+      sp.append(dot, document.createTextNode(`${pc(c)} % ${QSHORT[c]}`));
+      legend.appendChild(sp);
+    });
+    const notes = [];
+    if (mix.worst && mix.pct.m >= 0.1) {
+      notes.push(`Lo que más resta${isToday ? ' hoy' : ''}: ${mix.worst.entry.name.toLowerCase()}, ${int(mix.worst.kcal)} kcal${mix.worst.tags.length ? ` de ${tagLine(mix.worst.tags, 2).toLowerCase()}` : ''}.`);
+    }
+    if (mix.pct.b >= 0.7) notes.push('Casi todo comida de verdad: así las calorías te alimentan y te sacian.');
+    else if (mix.pct.m >= 0.35) notes.push('Más de un tercio son calorías que no alimentan: cambiar una de ellas por comida de verdad cuenta más que comer menos.');
+    if (mix.kcal.sin >= 50) notes.push(`${int(mix.kcal.sin)} kcal apuntadas a mano, sin clasificar.`);
+    $('#qday-note').textContent = notes.join(' ');
   }
 
   /* ── ideas para la próxima comida ────────────────────────────────── */

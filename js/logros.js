@@ -4,7 +4,8 @@
    si borras una pesada que lo sostenía, el logro no se inventa. La fecha en
    que se consiguió sí se guarda, para poder felicitarte una sola vez. */
 
-import { addDays, daysBetween, bmiZone, bmi, dayKcal } from './calc.js?v=0.7.1';
+import { addDays, daysBetween, bmiZone, bmi, dayKcal } from './calc.js?v=0.8.0';
+import { qualityMix } from './calidad.js?v=0.8.0';
 
 /* ── agua ───────────────────────────────────────────────────────────── */
 
@@ -42,6 +43,7 @@ export const BADGES = [
   { id: 'comidas7', glyph: '✎', title: 'Diario de comidas', desc: 'Siete días con las comidas apuntadas.', test: c => c.foodDays >= 7 },
   { id: 'plato', glyph: '★', title: 'Tu primer plato', desc: 'Guardaste un plato para apuntarlo de un toque.', test: c => c.dishes >= 1 },
   { id: 'agua7', glyph: 'H₂O', title: 'Bien hidratado', desc: 'Siete días llegando a tu agua.', test: c => c.waterDays >= 7 },
+  { id: 'verde7', glyph: '●', title: 'Comida de verdad', desc: 'Siete días con al menos el 70 % de tus calorías de las buenas.', test: c => c.greenDays >= 7 },
   { id: 'objetivo', glyph: '◆', title: 'Objetivo cumplido', desc: 'Conseguiste un objetivo intermedio.', test: c => c.milestonesDone >= 1 },
   { id: 'meta', glyph: '✓', title: '¡Meta!', desc: 'Llegaste a tu peso objetivo.', test: c => c.goalReached },
 ];
@@ -63,6 +65,10 @@ export function badgeContext(state, s) {
     foodDays: Object.keys(state.food || {}).filter(d => dayKcal(state.food, d) >= 800).length,
     dishes: (state.dishes || []).length,
     waterDays: Object.values(water).filter(n => n >= goal).length,
+    greenDays: Object.entries(state.food || {}).filter(([, list]) => {
+      const m = qualityMix(list, state);
+      return m.known >= 800 && m.pct.b >= 0.7;
+    }).length,
     milestonesDone: (s.milestones || []).filter(m => m.status === 'conseguido').length,
     goalReached: !!(s.projection && s.projection.status === 'conseguido' && entries.length > 1),
   };
