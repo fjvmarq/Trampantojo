@@ -18,17 +18,18 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.9.0';
-    import * as S from './js/store.js?v=0.9.0';
-    import { messageOfTheDay } from './js/messages.js?v=0.9.0';
-    import * as FO from './js/foods.js?v=0.9.0';
-    import * as AN from './js/antojo.js?v=0.9.0';
-    import * as ID from './js/ideas.js?v=0.9.0';
-    import * as LG from './js/logros.js?v=0.9.0';
-    import * as CQ from './js/calidad.js?v=0.9.0';
-    import * as EJ from './js/ejercicio.js?v=0.9.0';
-    import * as BD from './js/cuerpo.js?v=0.9.0';
-    import * as AG from './js/agua.js?v=0.9.0';
+    import * as C from './js/calc.js?v=0.9.1';
+    import * as S from './js/store.js?v=0.9.1';
+    import { messageOfTheDay } from './js/messages.js?v=0.9.1';
+    import * as FO from './js/foods.js?v=0.9.1';
+    import * as AN from './js/antojo.js?v=0.9.1';
+    import * as ID from './js/ideas.js?v=0.9.1';
+    import * as LG from './js/logros.js?v=0.9.1';
+    import * as CQ from './js/calidad.js?v=0.9.1';
+    import * as EJ from './js/ejercicio.js?v=0.9.1';
+    import * as BD from './js/cuerpo.js?v=0.9.1';
+    import * as AG from './js/agua.js?v=0.9.1';
+    import * as CH from './js/charts.js?v=0.9.1';
     import * as WK from './worker/agua.js';
 
     const out = document.getElementById('out');
@@ -226,6 +227,14 @@
     check('antojo: los antojos de calorías malas lo dicen', ['dulce', 'bolleria', 'refresco', 'alcohol', 'embutido'].every(id => AN.cravingQuality(AN.CRAVINGS.find(c => c.id === id)).q === 'm'));
     check('antojo: la napolitana sacia poco, las tostadas mucho', AN.satiety(AN.cravingQuality(AN.CRAVINGS.find(c => c.id === 'bolleria')).tags, 5) === 'poco' && AN.satiety(AN.swapFor(AN.CRAVINGS.find(c => c.id === 'bolleria')).tags, 15) !== 'poco');
     check('antojo: las alternativas de bebida existen', AN.alternatives('bebida', 3, {}).length >= 3 && AN.alternatives('bebida', 3, {}).every(a => AN.portionOf(a.food)));
+
+    // la cintura
+    const wBox = document.createElement('div'); document.body.appendChild(wBox);
+    CH.measureChart(wBox, { points: [{ date: '2026-08-01', v: 98 }, { date: '2026-08-20', v: 96.5 }, { date: '2026-09-10', v: 94 }], ref: 90, refLabel: '90 cm' });
+    check('cintura: el gráfico dibuja la línea y la raya, sin NaN', wBox.querySelector('path.trend') && wBox.querySelector('line.goal') && !/NaN/.test(wBox.innerHTML));
+    CH.measureChart(wBox, { points: [{ date: '2026-08-01', v: 98 }] });
+    check('cintura: con una sola medida lo explica en vez de dibujar', !wBox.querySelector('svg') && /una medida/.test(wBox.textContent));
+    wBox.remove();
 
     // ejercicio
     const exE = EJ.exerciseEntry('correr', 30, 80, 1000);

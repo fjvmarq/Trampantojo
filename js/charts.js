@@ -5,7 +5,7 @@
    discreta, una etiqueta sólo donde importa (el último valor) y el resto
    en el recuadro que sale al tocar. */
 
-import { addDays, daysBetween, parseDate, planKgAt, PLAN_LANE } from './calc.js?v=0.9.0';
+import { addDays, daysBetween, parseDate, planKgAt, PLAN_LANE } from './calc.js?v=0.9.1';
 
 const NS = 'http://www.w3.org/2000/svg';
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -387,6 +387,60 @@ try { intFmt = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0, useGro
 catch { intFmt = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }); }
 
 /* opts: food (por día), target (kcal), today, days (cuántos, 14 por defecto) */
+/* La cintura con el tiempo: la mejor pista de la grasa de la barriga.
+   points: [{ date, v }] ordenados; ref: la raya de «la mitad de tu altura». */
+export function measureChart(container, { points, ref, refLabel, unit = 'cm' }) {
+  container.replaceChildren();
+  container.classList.add('chart');
+  if (!points || points.length < 2) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = points?.length === 1
+      ? `Tienes una medida (${fmt1.format(points[0].v)} ${unit}). Con la siguiente verás cómo cambia.`
+      : 'Apunta tu cintura al pesarte («+ Añadir medidas») y aquí verás cómo baja. Es la mejor pista de la grasa de la barriga.';
+    container.appendChild(p);
+    return;
+  }
+  const W = Math.max(280, container.clientWidth), H = 190;
+  const m = { l: 34, r: 14, t: 16, b: 24 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const t = iso => new Date(iso + 'T12:00:00').getTime();
+  const t0 = t(points[0].date), t1 = Math.max(t(points[points.length - 1].date), t0 + 86400000);
+  const vals = points.map(p => p.v).concat(ref ? [ref] : []);
+  let lo = Math.min(...vals) - 1, hi = Math.max(...vals) + 1;
+  const step = niceStep(hi - lo, 4);
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const X = iso => m.l + (t(iso) - t0) / (t1 - t0) * iw;
+  const Y = v => m.t + (hi - v) / (hi - lo) * ih;
+
+  const svg = el('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cintura con el tiempo' }, container);
+  for (let v = lo; v <= hi + 1e-9; v += step) {
+    el('line', { x1: m.l, x2: m.l + iw, y1: Y(v), y2: Y(v), class: 'grid' }, svg);
+    text(svg, m.l - 6, Y(v) + 4, String(Math.round(v)), 'axis', 'end');
+  }
+  if (ref) {
+    el('line', { x1: m.l, x2: m.l + iw, y1: Y(ref), y2: Y(ref), class: 'goal' }, svg);
+    text(svg, m.l + iw, Y(ref) - 5, refLabel || '', 'goal-label', 'end');
+  }
+  el('path', { d: points.map((p, i) => `${i ? 'L' : 'M'}${X(p.date).toFixed(1)},${Y(p.v).toFixed(1)}`).join(''), class: 'trend' }, svg);
+  const tip = tooltip(container);
+  tip.hidden = true;
+  points.forEach((p, i) => {
+    const cx = X(p.date), cy = Y(p.v);
+    el('circle', { cx, cy, r: i === points.length - 1 ? 4.5 : 3.5, class: i === points.length - 1 ? 'end-dot' : 'dot' }, svg);
+    const hit = el('circle', { cx, cy, r: 14, class: 'hit', tabindex: 0 }, svg);
+    const diff = i ? p.v - points[i - 1].v : null;
+    const on = () => showTip(container, tip, [['tip-value', `${fmt1.format(p.v)} ${unit}`], ['tip-sub', diff == null ? 'Primera medida' : `${diff <= 0 ? '−' : '+'}${fmt1.format(Math.abs(diff))} ${unit} desde la anterior`], ['tip-date', longDate(p.date)]], cx, cy);
+    hit.addEventListener('pointerenter', on);
+    hit.addEventListener('pointerdown', on);
+    hit.addEventListener('focus', on);
+    hit.addEventListener('pointerleave', () => { tip.hidden = true; });
+    hit.addEventListener('blur', () => { tip.hidden = true; });
+  });
+  text(svg, m.l, H - 6, shortDate(points[0].date), 'axis', 'start');
+  text(svg, m.l + iw, H - 6, shortDate(points[points.length - 1].date), 'axis', 'end');
+}
+
 export function kcalChart(container, { food, target, today, days = 14 }) {
   container.replaceChildren();
   container.classList.add('chart');

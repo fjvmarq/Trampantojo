@@ -2,20 +2,20 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.9.0';
-import * as S from './store.js?v=0.9.0';
-import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.9.0';
-import { initComidas } from './comidas.js?v=0.9.0';
-import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.9.0';
-import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.9.0';
-import { messageOfTheDay } from './messages.js?v=0.9.0';
-import { startAmbient } from './ambient.js?v=0.9.0';
-import { qualityMix } from './calidad.js?v=0.9.0';
-import * as CP from './copia.js?v=0.9.0';
-import * as AG from './agua.js?v=0.9.0';
-import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.9.0';
+import * as C from './calc.js?v=0.9.1';
+import * as S from './store.js?v=0.9.1';
+import { weightChart, rateChart, kcalChart, measureChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.9.1';
+import { initComidas } from './comidas.js?v=0.9.1';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.9.1';
+import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.9.1';
+import { messageOfTheDay } from './messages.js?v=0.9.1';
+import { startAmbient } from './ambient.js?v=0.9.1';
+import { qualityMix } from './calidad.js?v=0.9.1';
+import * as CP from './copia.js?v=0.9.1';
+import * as AG from './agua.js?v=0.9.1';
+import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.9.1';
 
-const VERSION = '0.9.0';
+const VERSION = '0.9.1';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -343,6 +343,7 @@ function renderEvo(s) {
     journey: ui.range === -1, goalDate: s.goalDate, today: s.today,
   });
   renderGoals(s);
+  renderWaist(s);
   rateChart($('#chart-rate'), s.weekly);
   renderWeek(s);
   renderBadges(s);
@@ -681,6 +682,21 @@ function checkBadges(s) {
   if (!fresh.length) return;
   state.meta = { ...(state.meta || {}), badges: stored };
   persist(first ? null : fresh.length === 1 ? `Logro nuevo: ${fresh[0].title}. ${fresh[0].desc}` : `${fresh.length} logros nuevos: ${fresh.map(b => b.title).join(', ')}`);
+}
+
+/* ── la cintura ─────────────────────────────────────────────────────── */
+
+function renderWaist(s) {
+  const pts = (s.entries || []).filter(e => e.waist > 0).map(e => ({ date: e.date, v: e.waist }));
+  const ref = Math.round(state.profile.heightCm / 2);
+  measureChart($('#chart-waist'), { points: pts, ref, refLabel: `${ref} cm · la mitad de tu altura` });
+  const sub = $('#waist-sub');
+  if (pts.length < 2) { sub.textContent = `Tu señal buena: menos de ${ref} cm, la mitad de tu altura.`; return; }
+  const first = pts[0], last = pts[pts.length - 1];
+  const d = last.v - first.v;
+  const dec = v => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(v);
+  sub.textContent = `${dec(first.v)} → ${dec(last.v)} cm desde el ${shortDate(first.date)} (${d <= 0 ? '−' : '+'}${dec(Math.abs(d))} cm). `
+    + (last.v < ref ? 'Ya estás por debajo de la mitad de tu altura: la señal buena.' : `Tu señal buena: menos de ${ref} cm, te faltan ${dec(last.v - ref)}.`);
 }
 
 /* ── la calidad de tus calorías, día a día ──────────────────────────── */

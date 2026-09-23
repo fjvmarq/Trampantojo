@@ -4,9 +4,9 @@
    si borras una pesada que lo sostenía, el logro no se inventa. La fecha en
    que se consiguió sí se guarda, para poder felicitarte una sola vez. */
 
-import { addDays, daysBetween, bmiZone, bmi, dayKcal } from './calc.js?v=0.9.0';
-import { qualityMix } from './calidad.js?v=0.9.0';
-import { bestWeekMinutes } from './ejercicio.js?v=0.9.0';
+import { addDays, daysBetween, bmiZone, bmi, dayKcal } from './calc.js?v=0.9.1';
+import { qualityMix } from './calidad.js?v=0.9.1';
+import { bestWeekMinutes } from './ejercicio.js?v=0.9.1';
 
 /* ── agua ───────────────────────────────────────────────────────────── */
 

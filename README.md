@@ -84,7 +84,7 @@ carga, si el service worker está activo y cuántas pesadas hay guardadas.
 | Metabolismo basal | Mifflin-St Jeor |
 | Gasto diario | Basal × actividad (1,2 · 1,375 · 1,55 · 1,725 · 1,9), con sugerencia a partir de tus hábitos |
 | Calorías objetivo | Gasto − ritmo × 7.700 / 7, **nunca por debajo de 1.500 (hombre) / 1.200 (mujer)** |
-| Cintura/altura | Por debajo de 0,5 es la señal buena |
+| Cintura/altura | Por debajo de 0,5 es la señal buena. En Evolución, «Tu cintura»: su evolución con la raya de la mitad de tu altura (la mejor pista de la grasa visceral) |
 | % de grasa | Método de la Marina de EE. UU. (cinta métrica) |
 | Proteína y agua | 1,2–1,6 g/kg de peso objetivo · EFSA (2,5 L / 2,0 L) |
 

@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/app.css?v=0.9.0">
+  <link rel="stylesheet" href="css/app.css?v=0.9.1">
 </head>
 <body>
   <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
@@ -166,6 +166,12 @@
         <ul class="group log" id="goals"></ul>
         <p class="section-foot">Un peso y una fecha («88 kg para Navidad»). Aparecen en la gráfica como un rombo; la línea azul discontinua es la que deberías seguir.</p>
         <div class="card spaced">
+          <p class="eyebrow">Tu cintura</p>
+          <p class="card-sub" id="waist-sub"></p>
+          <div class="chart-box" id="chart-waist"></div>
+          <p class="card-foot">La cintura es la mejor pista de la grasa visceral, la que se acumula entre los órganos y la que más riesgo tiene para la salud. Mídela a la altura del ombligo, de pie y sin apretar, siempre igual.</p>
+        </div>
+        <div class="card">
           <p class="eyebrow">Ritmo semana a semana</p>
           <p class="card-sub">Cuánto ha bajado o subido tu tendencia cada semana.</p>
           <div class="chart-box" id="chart-rate"></div>
@@ -673,6 +679,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.9.0"></script>
+  <script type="module" src="js/app.js?v=0.9.1"></script>
 </body>
 </html>
