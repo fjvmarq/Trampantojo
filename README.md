@@ -37,14 +37,24 @@ y cada versión sabe leer los de las anteriores.
 
 > ⚠️ **No borres los datos del sitio en Chrome sin una copia.** Eso sí borra
 > tus pesadas. Si algún día hace falta (por ejemplo, un icono que no abre),
-> primero **Perfil › Descargar copia**, y después **Cargar copia**.
+> primero **Perfil › Guardar una copia ahora** (o comprueba que la automática está al día), y después **Cargar copia**.
 
 ### Copia de seguridad
 
-**Perfil › Descargar copia** guarda un fichero `trampantojo-copia-AAAA-MM-DD.json`.
-Guárdalo en Drive o mándatelo por correo. **Cargar copia** lo recupera (lo que
-hubiera en el móvil se aparta, no se borra). Sirve también para pasar la app a
-otro móvil.
+**Automática** (`js/copia.js`): en **Perfil › Copia automática** (o en el aviso
+de Hoy) eliges una vez una carpeta del móvil —Documentos, por ejemplo— y la app
+guarda ahí la copia sola: unos segundos después de cada cambio y al abrirla si
+hace más de 12 h. `trampantojo-copia.json` es siempre la última, y una vez por
+semana deja `trampantojo-AAAA-MM-DD.json`; nunca borra nada, y una copia vacía
+no pisa a una buena. Esa carpeta no se borra aunque borres los datos de Chrome.
+Usa File System Access (Chrome para Android 132 o más); si Chrome olvida el
+permiso, un aviso en Hoy lo pide con un toque. Donde el navegador no sabe
+escribir en carpetas, cada semana propone guardarla de un toque (compartir a
+Drive o al correo).
+
+**Guardar una copia ahora** comparte el fichero (Drive, correo…) o lo deja en
+Descargas. **Cargar copia** lo recupera (lo que hubiera en el móvil se aparta,
+no se borra). Sirve también para pasar la app a otro móvil.
 
 **Diagnóstico:** `estado.html` dice, en ese mismo móvil, si el manifiesto
 carga, si el service worker está activo y cuántas pesadas hay guardadas.

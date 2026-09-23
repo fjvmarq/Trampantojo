@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/app.css?v=0.8.0">
+  <link rel="stylesheet" href="css/app.css?v=0.8.1">
 </head>
 <body>
   <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
@@ -67,6 +67,15 @@
           <p class="message-text" id="message-text"></p>
         </div>
 
+        <div class="card backup-nudge" id="backup-nudge" hidden>
+          <p class="eyebrow" id="nudge-eyebrow">Tus datos</p>
+          <p class="message-title" id="nudge-title"></p>
+          <p class="message-text" id="nudge-text"></p>
+          <div class="nudge-actions">
+            <button type="button" class="btn primary small" id="nudge-go"></button>
+            <button type="button" class="btn plain small" id="nudge-later">Ahora no</button>
+          </div>
+        </div>
         <div class="card water" id="water-card">
           <div class="water-head">
             <p class="eyebrow">Agua hoy</p>
@@ -262,11 +271,13 @@
 
         <p class="section-label">Copia de seguridad</p>
         <div class="group">
-          <button type="button" class="item action" id="export"><span class="item-title">Descargar copia</span><span class="chev" aria-hidden="true"></span></button>
+          <button type="button" class="item action" id="auto-backup"><span class="item-title">Copia automática<small id="auto-backup-sub">Se guarda sola en una carpeta del móvil</small></span><span class="picker-value" id="auto-backup-state"></span><span class="chev" aria-hidden="true"></span></button>
+          <button type="button" class="item action" id="auto-backup-change" hidden><span class="item-title">Cambiar de carpeta</span><span class="chev" aria-hidden="true"></span></button>
+          <button type="button" class="item action" id="export"><span class="item-title">Guardar una copia ahora<small>A Drive, al correo o a Descargas</small></span><span class="chev" aria-hidden="true"></span></button>
           <label class="item action"><span class="item-title">Cargar copia</span><span class="chev" aria-hidden="true"></span><input type="file" id="import" accept="application/json,.json" hidden></label>
         </div>
         <p class="section-foot" id="backup-status"></p>
-        <p class="section-foot">Tus datos sólo están en este móvil. Guarda una copia de vez en cuando (en Drive, en el correo…): sirve para cambiar de móvil o si algún día borras los datos de Chrome.</p>
+        <p class="section-foot">Tus datos viven en este móvil. La copia automática los guarda cada día en una carpeta que eliges (Documentos, por ejemplo), que no se borra aunque borres los datos de Chrome: la última en <b>trampantojo-copia.json</b> y una por semana con su fecha. Para pasar la app a otro móvil, «Cargar copia» con ese fichero.</p>
 
         <p class="fine center" id="version"></p>
       </section>
@@ -606,6 +617,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.8.0"></script>
+  <script type="module" src="js/app.js?v=0.8.1"></script>
 </body>
 </html>

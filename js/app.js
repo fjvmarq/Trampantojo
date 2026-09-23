@@ -2,17 +2,18 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.8.0';
-import * as S from './store.js?v=0.8.0';
-import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.8.0';
-import { initComidas } from './comidas.js?v=0.8.0';
-import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.8.0';
-import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.8.0';
-import { messageOfTheDay } from './messages.js?v=0.8.0';
-import { startAmbient } from './ambient.js?v=0.8.0';
-import { qualityMix } from './calidad.js?v=0.8.0';
+import * as C from './calc.js?v=0.8.1';
+import * as S from './store.js?v=0.8.1';
+import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.8.1';
+import { initComidas } from './comidas.js?v=0.8.1';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.8.1';
+import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.8.1';
+import { messageOfTheDay } from './messages.js?v=0.8.1';
+import { startAmbient } from './ambient.js?v=0.8.1';
+import { qualityMix } from './calidad.js?v=0.8.1';
+import * as CP from './copia.js?v=0.8.1';
 
-const VERSION = '0.8.0';
+const VERSION = '0.8.1';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -45,6 +46,7 @@ function persist(okText) {
   try {
     S.save(state, today());
     if (okText) toast(okText);
+    scheduleBackup();
     return true;
   } catch (err) {
     toast(err.message, true);
@@ -571,17 +573,7 @@ function renderPerfil(s) {
   updateActivityHint();
   updateHabitsSuggest();
   reflectTheme();
-  const last = state.meta?.lastBackup;
-  const st = $('#backup-status');
-  st.classList.remove('warn');
-  if (!last) {
-    st.textContent = 'Todavía no has guardado ninguna copia.';
-    if (s.entries.length >= 7) st.classList.add('warn');
-  } else {
-    const days = C.daysBetween(last, s.today);
-    st.textContent = `Última copia: ${longDate(last)}${days > 0 ? ` (hace ${days} ${days === 1 ? 'día' : 'días'})` : ' (hoy)'}.`;
-    if (days > 14) st.classList.add('warn');
-  }
+  renderBackupUi();
   const pl = s.plan;
   const endTxt = s.planEnd ? C.parseDate(s.planEnd).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
   $('#plan-summary').textContent = !pl || !s.hasData ? ''
@@ -1133,19 +1125,129 @@ $('#habits-form').addEventListener('submit', e => {
 
 /* ── copia de seguridad ─────────────────────────────────────────────── */
 
-$('#export').addEventListener('click', () => {
-  const text = S.exportText(state);
-  const blob = new Blob([text], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `trampantojo-copia-${today()}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+// La automática: tras cada cambio (esperando unos segundos a que acabes) y al abrir.
+let backupTimer = null;
+let backupResult = null;
+function scheduleBackup() {
+  clearTimeout(backupTimer);
+  backupTimer = setTimeout(() => runBackup(), 8000);
+}
+
+async function runBackup({ gesture = false, explicit = false } = {}) {
+  if (!S.canSave()) return null;          // tras una carga ilegible no se copia nada
+  const hasData = !!state.profile && (state.weights.length > 0 || Object.keys(state.food || {}).length > 0);
+  backupResult = await CP.autoBackup(S.exportText(state), { today: today(), gesture, explicit, hasData });
+  renderBackupUi();
+  return backupResult;
+}
+
+function lastText(d) {
+  if (!d) return '';
+  const hm = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const days = C.daysBetween(iso, today());
+  return days === 0 ? `hoy a las ${hm}` : days === 1 ? `ayer a las ${hm}` : `el ${longDate(iso)}`;
+}
+
+let backupUiSeq = 0;
+async function renderBackupUi() {
+  const seq = ++backupUiSeq;
+  const st = await CP.status();
+  if (seq !== backupUiSeq) return;                 // llegó otra más nueva
+  const sub = $('#auto-backup-sub'), val = $('#auto-backup-state'), status = $('#backup-status');
+  status.classList.remove('warn');
+  $('#auto-backup-change').hidden = !st.folder;
+  const manual = state.meta?.lastBackup;
+  if (!st.supported) {
+    sub.textContent = 'Este navegador no deja guardar en carpetas: te aviso cada semana para guardarla de un toque.';
+    val.textContent = 'Semanal';
+  } else if (!st.folder) {
+    sub.textContent = 'Elige una vez una carpeta del móvil y se guardará sola cada día.';
+    val.textContent = 'Activar';
+  } else if (st.perm === 'granted') {
+    sub.textContent = `En la carpeta «${st.folder}»${st.last ? ` · última ${lastText(st.last)}` : ''}`;
+    val.textContent = 'Activada';
+  } else {
+    sub.textContent = `En la carpeta «${st.folder}» · falta darle permiso otra vez`;
+    val.textContent = 'Permitir';
+  }
+  const lastAny = [st.last ? st.last.getTime() : 0, manual ? C.parseDate(manual).getTime() : 0].reduce((a, b) => Math.max(a, b), 0);
+  const days = lastAny ? Math.floor((Date.now() - lastAny) / 86400000) : null;
+  status.textContent = !lastAny ? 'Todavía no hay ninguna copia fuera de la app.'
+    : st.last && st.last.getTime() === lastAny ? `Última copia automática: ${lastText(st.last)}.`
+      : `Última copia: ${longDate(manual)}${days > 0 ? ` (hace ${days} ${days === 1 ? 'día' : 'días'})` : ' (hoy)'}.`;
+  if ((days == null && state.weights.length >= 7) || days > 14) status.classList.add('warn');
+  renderBackupNudge(st, days);
+}
+
+// En Hoy: activar la copia, darle permiso otra vez, o (sin carpetas) la copia de la semana.
+function renderBackupNudge(st, days) {
+  const card = $('#backup-nudge');
+  const snoozed = (() => { try { return Number(localStorage.getItem('trampantojo:copia-aviso') || 0) > Date.now(); } catch { return false; } })();
+  let kind = null;
+  if (state.profile && !snoozed) {
+    if (st.supported && !st.folder && state.weights.length >= 2) kind = 'activar';
+    else if (st.folder && st.perm !== 'granted' && CP.due(20)) kind = 'permiso';
+    else if (!st.supported && state.weights.length >= 3 && (days == null || days >= 7)) kind = 'semanal';
+  }
+  card.hidden = !kind;
+  card.dataset.kind = kind || '';
+  if (!kind) return;
+  const T = {
+    activar: ['Protege tus datos', 'Activa la copia automática', 'Eliges una vez una carpeta del móvil (Documentos, por ejemplo) y la app guarda ahí tu copia cada día, sola. Aunque borres los datos de Chrome o cambies de móvil, tus pesadas siguen ahí.', 'Elegir carpeta'],
+    permiso: ['Tu copia', 'La copia de hoy está pendiente', `Chrome pide permiso otra vez para seguir guardando en «${st.folder}». Es un toque.`, 'Permitir y guardar'],
+    semanal: ['Tu copia', days == null ? 'Aún no tienes ninguna copia' : `Hace ${days} días de tu última copia`, 'Guárdala de un toque: mándala a Drive o a tu correo. Si algún día borras los datos de Chrome, la recuperas con «Cargar copia».', 'Guardar copia'],
+  }[kind];
+  $('#nudge-eyebrow').textContent = T[0];
+  $('#nudge-title').textContent = T[1];
+  $('#nudge-text').textContent = T[2];
+  $('#nudge-go').textContent = T[3];
+}
+
+async function chooseBackupFolder() {
+  try {
+    const r = await CP.chooseFolder(S.exportText(state), today());
+    toast(`Copia automática activada en «${r.folder}». Se guardará sola cada día.`);
+  } catch (err) {
+    if (err?.name !== 'AbortError') toast('No he podido usar esa carpeta. Prueba con Documentos o Descargas.', true);
+  }
+  renderBackupUi();
+}
+
+async function shareBackup() {
+  const how = await CP.shareOrDownload(S.exportText(state), today());
+  if (how === 'cancelled') return;
   state.meta = { ...state.meta, lastBackup: today() };
-  if (persist('Copia descargada. Guárdala en Drive o mándatela por correo.')) render();
+  if (persist(how === 'shared' ? 'Copia enviada. Guárdala en Drive o en tu correo.' : 'Copia guardada en Descargas.')) render();
+}
+
+async function backupNow() {
+  const r = await runBackup({ gesture: true, explicit: true });
+  if (r?.ok) toast(`Copia guardada en «${r.folder}».`);
+  else if (r?.reason === 'permiso') toast('Sin permiso no puedo guardar en esa carpeta. Puedes elegir otra.', true);
+  else if (r?.reason === 'vacia') toast('Todavía no hay nada que guardar.');
+  else if (r?.reason === 'error') toast('No he podido escribir en la carpeta. Prueba a elegirla otra vez.', true);
+}
+
+$('#auto-backup').addEventListener('click', async () => {
+  const st = await CP.status();
+  if (!st.supported) return shareBackup();
+  if (!st.folder) return chooseBackupFolder();
+  return backupNow();
 });
+$('#auto-backup-change').addEventListener('click', chooseBackupFolder);
+$('#nudge-go').addEventListener('click', () => {
+  const kind = $('#backup-nudge').dataset.kind;
+  if (kind === 'activar') chooseBackupFolder();
+  else if (kind === 'permiso') backupNow();
+  else if (kind === 'semanal') shareBackup();
+});
+$('#nudge-later').addEventListener('click', () => {
+  try { localStorage.setItem('trampantojo:copia-aviso', String(Date.now() + 3 * 86400000)); } catch { /* da igual */ }
+  $('#backup-nudge').hidden = true;
+});
+
+$('#export').addEventListener('click', shareBackup);
 
 $('#import').addEventListener('change', async e => {
   const file = e.target.files?.[0];
@@ -1302,6 +1404,7 @@ startAmbient();
 comidas = initComidas({ getState: () => state, persist, toast, today, render });
 initAntojo({ getState: () => state, persist, toast, today, render, summary: () => C.summarize(state, today()) });
 setSexClass();
+setTimeout(() => { if (CP.due(12)) runBackup(); else renderBackupUi(); }, 2500);
 if (loaded.status === 'unreadable') showStorageAlert();
 else if (!state.profile) startWelcome();
 go(location.hash.slice(1) || 'hoy', { push: false });
