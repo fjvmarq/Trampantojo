@@ -5,7 +5,7 @@
    discreta, una etiqueta sólo donde importa (el último valor) y el resto
    en el recuadro que sale al tocar. */
 
-import { addDays, daysBetween, parseDate, planKgAt, PLAN_LANE } from './calc.js?v=0.2.2';
+import { addDays, daysBetween, parseDate, planKgAt, PLAN_LANE } from './calc.js?v=0.3.5';
 
 const NS = 'http://www.w3.org/2000/svg';
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -78,9 +78,12 @@ function showTip(container, tip, lines, x, y) {
 
 /* opts: daily (serie diaria con trend y kg|null), goalKg, healthy [lo, hi],
          rangeDays (null = todo), perWeek (para la proyección), compact,
-         plan + rateKgWeek (el carril de tu plan), milestones (objetivos con estado) */
+         plan + rateKgWeek (el carril de tu plan), milestones (objetivos con estado),
+         journey + goalDate: «tu camino», desde que empezaste hasta la fecha de la
+         meta, con la línea que deberías seguir aunque aún no haya datos */
 export function weightChart(container, opts) {
-  const { daily, goalKg, healthy, rangeDays, perWeek, compact, plan, rateKgWeek } = opts;
+  const { daily, goalKg, healthy, rangeDays, perWeek, compact, plan, rateKgWeek, goalDate } = opts;
+  const journey = !!opts.journey && !!goalDate && !!plan;
   const milestones = opts.milestones || [];
   container.replaceChildren();
   container.classList.add('chart');
@@ -93,16 +96,21 @@ export function weightChart(container, opts) {
   }
 
   const lastDate = daily[daily.length - 1].date;
-  const from = rangeDays ? addDays(lastDate, -(rangeDays - 1)) : daily[0].date;
+  const from = rangeDays && !journey ? addDays(lastDate, -(rangeDays - 1)) : daily[0].date;
   const vis = daily.filter(d => d.date >= from);
   const span = Math.max(1, daysBetween(vis[0].date, lastDate));
 
   const lastTrend = vis[vis.length - 1].trend;
-  const projecting = !compact && perWeek != null && perWeek < -0.05 && lastTrend - goalKg > 0.25;
+  const projecting = (!compact || journey) && perWeek != null && perWeek < -0.05 && lastTrend - goalKg > 0.25;
   let future = projecting ? Math.max(7, Math.round(span * 0.25)) : 0;
+  // tu camino llega hasta la fecha de la meta (y un pelo más, para que se vea la bandera)
+  if (journey && goalDate > lastDate) {
+    const toGoal = daysBetween(lastDate, goalDate);
+    future = toGoal + Math.max(2, Math.round((span + toGoal) * 0.03));
+  }
   // el próximo objetivo siempre entra en el gráfico (hasta seis meses vista):
   // es lo que responde a «¿voy a buen ritmo?»
-  const nextM = compact ? null : milestones.find(mm => mm.date > lastDate && mm.status !== 'conseguido');
+  const nextM = compact || journey ? null : milestones.find(mm => mm.date > lastDate && mm.status !== 'conseguido');
   if (nextM) {
     const need = daysBetween(lastDate, nextM.date) + 4;
     if (need <= 183) future = Math.max(future, need);
@@ -122,16 +130,16 @@ export function weightChart(container, opts) {
   msIn.forEach(mm => vals.push(mm.kg));
   let lo = Math.min(...vals), hi = Math.max(...vals);
   const dataSpan = Math.max(hi - lo, 1);
-  const goalIn = goalKg >= lo - dataSpan * 0.5 && goalKg <= hi + dataSpan * 0.5;
+  const goalIn = journey || (goalKg >= lo - dataSpan * 0.5 && goalKg <= hi + dataSpan * 0.5);
   if (goalIn) { lo = Math.min(lo, goalKg); hi = Math.max(hi, goalKg); }
   const pad = Math.max(0.3, (hi - lo) * 0.08);
   lo -= pad; hi += pad;
-  const step = niceStep(hi - lo, compact ? 3 : 4);
+  const step = niceStep(hi - lo, compact && !journey ? 3 : 4);
   lo = Math.floor(lo / step) * step;
   hi = Math.ceil(hi / step) * step;
 
   const W = Math.max(280, container.clientWidth);
-  const H = compact ? 170 : 240;
+  const H = journey && compact ? 210 : compact ? 170 : 240;
   const m = { l: 34, r: 62, t: 14, b: 24 };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
   const totalDays = Math.max(1, daysBetween(vis[0].date, endDate));
@@ -167,8 +175,10 @@ export function weightChart(container, opts) {
   }
   el('line', { x1: m.l, x2: m.l + iw, y1: m.t + ih, y2: m.t + ih, class: 'baseline' }, svg);
 
-  // meta
-  if (goalIn) {
+  // meta: en tu camino es una bandera al final de la línea; si no, una raya
+  if (journey) {
+    // nada aquí: la bandera se dibuja encima de todo, más abajo
+  } else if (goalIn) {
     el('line', { x1: m.l, x2: m.l + iw, y1: Y(goalKg), y2: Y(goalKg), class: 'goal' }, svg);
     text(svg, m.l + iw + 6, Y(goalKg) + 4, `Meta ${kg1(goalKg)}`, 'goal-label');
   } else if (goalKg < lo) {
@@ -189,6 +199,14 @@ export function weightChart(container, opts) {
     const down = pts.slice().reverse().map(d => `${X(d).toFixed(1)},${Y(planAt(d) - PLAN_LANE).toFixed(1)}`);
     el('polygon', { points: [...up, ...down].join(' '), class: 'lane' }, svg);
     el('polyline', { points: pts.map(d => `${X(d).toFixed(1)},${Y(planAt(d)).toFixed(1)}`).join(' '), class: 'plan-line' }, svg);
+  }
+
+  // hoy, cuando el gráfico mira hacia delante
+  const todayIso = opts.today;
+  if (journey && todayIso && todayIso > vis[0].date && todayIso < endDate) {
+    const tx = X(todayIso);
+    el('line', { x1: tx, x2: tx, y1: m.t, y2: m.t + ih, class: 'today-line' }, svg);
+    text(svg, tx, m.t - 3, 'hoy', 'today-label', 'middle');
   }
 
   // pesadas del día
@@ -212,6 +230,15 @@ export function weightChart(container, opts) {
     const lx = Math.min(Math.max(x, m.l + 24), m.l + iw - 4);
     text(svg, lx, y - k - 5, mm.name || `${kg1(mm.kg)} kg`, 'ms-label', 'middle');
   });
+
+  // la bandera de la meta, al final de tu camino
+  if (journey && goalDate <= endDate) {
+    const fx = X(goalDate), fy = Y(goalKg);
+    el('circle', { cx: fx, cy: fy, r: 5.5, class: 'flag' }, svg);
+    // la etiqueta, debajo de la bandera (ahí no pasa la línea); si no cabe, encima
+    const below = fy + 20 < m.t + ih;
+    text(svg, fx, below ? fy + 19 : fy - 10, `Meta ${kg1(goalKg)}`, 'flag-label', 'end');
+  }
 
   // último valor
   const ex = X(lastDate), ey = Y(lastTrend);
@@ -262,13 +289,13 @@ export function weightChart(container, opts) {
   });
   hit.addEventListener('focus', () => show(idx));
 
-  if (!compact) {
+  if (!compact || journey) {
     const legend = document.createElement('div');
     legend.className = 'legend';
     [['key-dot', 'Peso del día'], ['key-line', 'Tendencia'],
-      ...(laneOn ? [['key-lane', 'Tu plan']] : []),
+      ...(laneOn ? [['key-plan', 'Línea a seguir']] : []),
       ...(msIn.length ? [['key-ms', 'Objetivo']] : []),
-      ['key-dash', 'Meta'],
+      ...(journey ? [] : [['key-dash', 'Meta']]),
       ...(projecting ? [['key-proj', 'A este ritmo']] : [])].forEach(([k, label]) => {
       const s = document.createElement('span');
       const sw = document.createElement('i');

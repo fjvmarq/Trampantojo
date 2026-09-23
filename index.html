@@ -1,25 +1,33 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Trampantojo</title>
   <meta name="description" content="Tu peso real, sin trampas: registro diario, tendencia y ayuda para los antojos.">
-  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f5f5f7">
+  <script>
+    // el tema antes de pintar nada, para que no parpadee: claro por defecto, como bimio.tools
+    try { document.documentElement.dataset.theme = localStorage.getItem('trampantojo:tema') || 'light'; } catch (e) { /* claro */ }
+  </script>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="css/app.css?v=0.2.2">
+  <link rel="stylesheet" href="css/app.css?v=0.3.5">
 </head>
 <body>
+  <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
+  <div class="page-fx" aria-hidden="true">
+    <span class="hx b1"></span><span class="hx b2"></span><span class="hx b3"></span><span class="hx b4"></span><span class="hx b5"></span>
+    <canvas class="page-cloud"></canvas>
+  </div>
+
   <div id="app">
-    <!-- Cabecera al estilo de BIMIO: el logo de la app a la izquierda, el título y una línea debajo -->
     <header class="app-header">
-      <img class="app-mark" src="icons/icon.svg" alt="" width="44" height="44">
+      <img class="app-mark" src="icons/icon.svg" alt="" width="46" height="46">
       <div class="app-header-text">
-        <h1 id="screen-title">Trampantojo</h1>
         <p class="app-header-sub" id="today-label"></p>
+        <h1 id="screen-title">Trampantojo</h1>
       </div>
     </header>
 
@@ -27,7 +35,7 @@
       <!-- ── Hoy ─────────────────────────────────────────────── -->
       <section id="screen-hoy" class="screen" data-title="Hoy">
         <form class="card weigh" id="weigh-form" autocomplete="off">
-          <label for="weigh-kg" class="card-label">Peso de hoy</label>
+          <label for="weigh-kg" class="eyebrow">Peso de hoy</label>
           <div class="weigh-row">
             <div class="field-unit big">
               <input id="weigh-kg" name="kg" type="text" inputmode="decimal" placeholder="0,0" aria-describedby="weigh-hint">
@@ -48,15 +56,16 @@
         </form>
 
         <div class="card message" id="message-card">
-          <p class="card-label accent">Para hoy</p>
+          <p class="eyebrow">Para hoy</p>
           <p class="message-title" id="message-title"></p>
           <p class="message-text" id="message-text"></p>
         </div>
 
         <div class="card hero" id="hero-card">
-          <p class="card-label accent">Peso de tendencia</p>
+          <p class="eyebrow">Tu camino</p>
           <p class="hero-value"><span id="hero-kg">—</span><span class="unit">kg</span></p>
           <p class="hero-delta" id="hero-delta"></p>
+          <p class="card-sub" id="journey-sub"></p>
           <div class="chart-box" id="chart-hoy"></div>
           <button class="row-link" data-go="evolucion">Ver toda la evolución</button>
         </div>
@@ -67,7 +76,7 @@
         <div class="card nudge" id="habits-nudge" hidden>
           <p class="message-title">Cuéntame tus hábitos</p>
           <p class="message-text">Con tu ejercicio y cómo comes, calculo mejor lo que gastas.</p>
-          <button class="btn tinted" data-go="perfil" data-focus="habitos">Rellenar hábitos</button>
+          <button class="btn ghost" data-go="perfil" data-focus="habitos">Rellenar hábitos</button>
         </div>
       </section>
 
@@ -76,20 +85,20 @@
         <div class="segmented" role="radiogroup" aria-label="Periodo">
           <button type="button" role="radio" data-range="30">30 días</button>
           <button type="button" role="radio" data-range="90">90 días</button>
-          <button type="button" role="radio" data-range="365">1 año</button>
           <button type="button" role="radio" data-range="0">Todo</button>
+          <button type="button" role="radio" data-range="-1">Mi plan</button>
         </div>
         <div class="card">
-          <p class="card-label accent">Evolución del peso</p>
+          <p class="eyebrow">Evolución del peso</p>
           <p class="card-sub" id="evo-sub"></p>
           <div class="chart-box" id="chart-evo"></div>
           <button class="row-link" data-go="registro">Ver los datos uno a uno</button>
         </div>
         <p class="section-label">Objetivos intermedios</p>
         <ul class="group log" id="goals"></ul>
-        <p class="section-foot">Un peso y una fecha («88 kg para Navidad»). Aparecen en la gráfica como un rombo, y el carril azul es tu plan: si tu línea va por dentro o por debajo, vas a buen ritmo.</p>
+        <p class="section-foot">Un peso y una fecha («88 kg para Navidad»). Aparecen en la gráfica como un rombo; la línea azul discontinua es la que deberías seguir.</p>
         <div class="card spaced">
-          <p class="card-label accent">Ritmo semana a semana</p>
+          <p class="eyebrow">Ritmo semana a semana</p>
           <p class="card-sub">Cuánto ha bajado o subido tu tendencia cada semana.</p>
           <div class="chart-box" id="chart-rate"></div>
         </div>
@@ -100,7 +109,7 @@
 
       <!-- ── Registro ────────────────────────────────────────── -->
       <section id="screen-registro" class="screen" data-title="Registro" hidden>
-        <button class="btn tinted block" id="add-past">Añadir otro día</button>
+        <button class="btn ghost block" id="add-past">Añadir otro día</button>
         <p class="section-label">Tus pesadas</p>
         <ul class="group log" id="log"></ul>
         <p class="section-foot" id="log-foot">Toca una pesada para corregirla o borrarla.</p>
@@ -127,16 +136,12 @@
           <p class="section-label">Tu meta</p>
           <div class="group">
             <label class="item"><span class="item-title">Peso objetivo</span><span class="field-unit"><input name="goalKg" type="text" inputmode="decimal" placeholder="0,0" required><span>kg</span></span></label>
-            <label class="item"><span class="item-title">Ritmo</span>
-              <select name="rateKgWeek">
-                <option value="0.25">Suave · 0,25 kg/sem</option>
-                <option value="0.5">Normal · 0,5 kg/sem</option>
-                <option value="0.75">Rápido · 0,75 kg/sem</option>
-                <option value="1">Máximo · 1 kg/sem</option>
-              </select>
-            </label>
-            <label class="item"><span class="item-title">Actividad</span><select name="activity"></select></label>
+            <label class="item"><span class="item-title">¿Para cuándo?</span><input name="goalDate" type="date"></label>
+            <button type="button" class="item picker" data-picker="pace"><span class="item-title">Ritmo</span><span class="picker-value" data-for="pace"></span><span class="chev" aria-hidden="true"></span></button>
+            <button type="button" class="item picker" data-picker="activity"><span class="item-title">Actividad</span><span class="picker-value" data-for="activity"></span><span class="chev" aria-hidden="true"></span></button>
           </div>
+          <input type="hidden" name="activity">
+          <p class="section-foot" id="pace-hint"></p>
           <p class="section-foot" id="goal-hint"></p>
           <p class="section-foot" id="activity-hint"></p>
           <button type="submit" class="btn primary block">Guardar mis datos</button>
@@ -154,47 +159,19 @@
             <label class="item"><span class="item-title">Ejercicio</span><input name="exerciseType" type="text" placeholder="Andar, pádel…"></label>
             <label class="item"><span class="item-title">Días por semana</span><input name="exerciseDays" type="text" inputmode="numeric" placeholder="0"></label>
             <label class="item"><span class="item-title">Minutos cada vez</span><input name="exerciseMinutes" type="text" inputmode="numeric" placeholder="0"></label>
-            <label class="item"><span class="item-title">Trabajo</span>
-              <select name="work">
-                <option value="">—</option>
-                <option value="sentado">Sentado</option>
-                <option value="pie">De pie</option>
-                <option value="movimiento">Físico</option>
-              </select>
-            </label>
-            <label class="item"><span class="item-title">Pasos al día</span>
-              <select name="steps">
-                <option value="">No lo sé</option>
-                <option value="menos5">Menos de 5.000</option>
-                <option value="5a8">5.000 – 8.000</option>
-                <option value="8a12">8.000 – 12.000</option>
-                <option value="mas12">Más de 12.000</option>
-              </select>
-            </label>
+            <button type="button" class="item picker" data-picker="work"><span class="item-title">Trabajo</span><span class="picker-value" data-for="work"></span><span class="chev" aria-hidden="true"></span></button>
+            <button type="button" class="item picker" data-picker="steps"><span class="item-title">Pasos al día</span><span class="picker-value" data-for="steps"></span><span class="chev" aria-hidden="true"></span></button>
           </div>
           <p class="section-foot" id="habits-suggest"></p>
 
           <p class="section-label">Cómo comes</p>
           <div class="group">
-            <label class="item"><span class="item-title">Aceite al cocinar</span>
-              <select name="oil">
-                <option value="">—</option>
-                <option value="poco">Poco</option>
-                <option value="normal">Normal</option>
-                <option value="mucho">Bastante</option>
-              </select>
-            </label>
-            <label class="item"><span class="item-title">Raciones</span>
-              <select name="portions">
-                <option value="">—</option>
-                <option value="pequenas">Pequeñas</option>
-                <option value="normales">Normales</option>
-                <option value="grandes">Grandes</option>
-              </select>
-            </label>
+            <button type="button" class="item picker" data-picker="oil"><span class="item-title">Aceite al cocinar</span><span class="picker-value" data-for="oil"></span><span class="chev" aria-hidden="true"></span></button>
+            <button type="button" class="item picker" data-picker="portions"><span class="item-title">Raciones</span><span class="picker-value" data-for="portions"></span><span class="chev" aria-hidden="true"></span></button>
             <label class="item"><span class="item-title">No me gusta</span><input name="dislikes" type="text" placeholder="Coliflor…"></label>
             <label class="item"><span class="item-title">Alergias</span><input name="allergies" type="text" placeholder="Lactosa…"></label>
           </div>
+          <input type="hidden" name="work"><input type="hidden" name="steps"><input type="hidden" name="oil"><input type="hidden" name="portions">
           <p class="section-foot">Con esto afino tu gasto, y en la próxima versión los consejos de comida.</p>
 
           <p class="section-label">Tus razones</p>
@@ -205,6 +182,19 @@
           </div>
           <button type="submit" class="btn primary block">Guardar hábitos</button>
         </form>
+
+        <p class="section-label">Apariencia</p>
+        <div class="group">
+          <div class="item">
+            <span class="item-title">Tema</span>
+            <div class="segmented compact" role="radiogroup" aria-label="Tema" id="theme-seg">
+              <button type="button" role="radio" data-theme-choice="light">Claro</button>
+              <button type="button" role="radio" data-theme-choice="dark">Oscuro</button>
+              <button type="button" role="radio" data-theme-choice="auto">Auto</button>
+            </div>
+          </div>
+        </div>
+        <p class="section-foot">«Auto» sigue el tema del móvil.</p>
 
         <p class="section-label">Copia de seguridad</p>
         <div class="group">
@@ -230,7 +220,7 @@
   <div id="welcome" class="welcome" hidden>
     <form id="welcome-form" class="welcome-card" autocomplete="off" novalidate>
       <img class="welcome-mark" src="icons/icon.svg" alt="" width="84" height="84">
-      <h1>Trampantojo</h1>
+      <h1><span class="grad">Trampantojo</span></h1>
       <p class="lead">Tu peso real, sin trampas.<br>Un par de datos y empezamos.</p>
       <div class="step" data-step="1">
         <div class="group">
@@ -250,16 +240,12 @@
         <div class="group">
           <label class="item"><span class="item-title">Peso de hoy</span><span class="field-unit"><input name="kg" type="text" inputmode="decimal" placeholder="0,0" required><span>kg</span></span></label>
           <label class="item"><span class="item-title">Peso objetivo</span><span class="field-unit"><input name="goalKg" type="text" inputmode="decimal" placeholder="0,0" required><span>kg</span></span></label>
-          <label class="item"><span class="item-title">Ritmo</span>
-            <select name="rateKgWeek">
-              <option value="0.25">Suave · 0,25 kg/sem</option>
-              <option value="0.5" selected>Normal · 0,5 kg/sem</option>
-              <option value="0.75">Rápido · 0,75 kg/sem</option>
-              <option value="1">Máximo · 1 kg/sem</option>
-            </select>
-          </label>
-          <label class="item"><span class="item-title">Actividad</span><select name="activity"></select></label>
+          <label class="item"><span class="item-title">¿Para cuándo?</span><input name="goalDate" type="date"></label>
+          <button type="button" class="item picker" data-picker="pace"><span class="item-title">Ritmo</span><span class="picker-value" data-for="pace"></span><span class="chev" aria-hidden="true"></span></button>
+          <button type="button" class="item picker" data-picker="activity"><span class="item-title">Actividad</span><span class="picker-value" data-for="activity"></span><span class="chev" aria-hidden="true"></span></button>
         </div>
+        <input type="hidden" name="activity" value="sedentario">
+        <p class="section-foot" id="welcome-pace-hint"></p>
         <p class="section-foot" id="welcome-goal-hint"></p>
       </div>
       <p class="error" id="welcome-error" role="alert"></p>
@@ -271,7 +257,19 @@
     </form>
   </div>
 
-  <!-- ── Corregir una pesada: hoja inferior ──────────────────── -->
+  <!-- ── Elegir una opción: hoja inferior (sustituye a los desplegables) ── -->
+  <dialog id="picker-dialog" class="sheet">
+    <div class="sheet-grabber" aria-hidden="true"></div>
+    <div class="sheet-bar">
+      <span></span>
+      <h2 id="picker-title"></h2>
+      <button type="button" class="bar-btn strong" id="picker-done">Listo</button>
+    </div>
+    <ul class="group picker-list" id="picker-list" role="listbox"></ul>
+    <p class="section-foot" id="picker-foot"></p>
+  </dialog>
+
+  <!-- ── Corregir una pesada ─────────────────────────────────── -->
   <dialog id="edit-dialog" class="sheet">
     <form id="edit-form" autocomplete="off">
       <div class="sheet-grabber" aria-hidden="true"></div>
@@ -291,13 +289,13 @@
         <label class="item only-m"><span class="item-title">Cadera</span><span class="field-unit"><input name="hip" type="text" inputmode="decimal" placeholder="—"><span>cm</span></span></label>
       </div>
       <p class="error" id="edit-error" role="alert"></p>
-      <div class="group">
+      <div class="group spaced-group">
         <button type="button" class="item action destructive" id="edit-delete"><span class="item-title">Borrar esta pesada</span></button>
       </div>
     </form>
   </dialog>
 
-  <!-- ── Un objetivo intermedio: hoja inferior ───────────────── -->
+  <!-- ── Un objetivo intermedio ──────────────────────────────── -->
   <dialog id="goal-dialog" class="sheet">
     <form id="goal-form" autocomplete="off">
       <div class="sheet-grabber" aria-hidden="true"></div>
@@ -315,7 +313,7 @@
       <p class="section-label" id="goal-ideas-label">Ideas</p>
       <div class="ideas" id="goal-ideas"></div>
       <p class="error" id="goal-error" role="alert"></p>
-      <div class="group" id="goal-delete-group">
+      <div class="group spaced-group" id="goal-delete-group">
         <button type="button" class="item action destructive" id="goal-delete"><span class="item-title">Borrar este objetivo</span></button>
       </div>
     </form>
@@ -326,13 +324,13 @@
     <p class="message-title">No he podido leer tus datos</p>
     <p class="message-text" id="storage-alert-text"></p>
     <div class="alert-actions">
-      <button class="btn tinted" id="storage-download">Descargar lo que había</button>
+      <button class="btn ghost" id="storage-download">Descargar lo que había</button>
       <button class="btn plain destructive" id="storage-reset">Apartarlo y empezar</button>
     </div>
   </div>
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.2.2"></script>
+  <script type="module" src="js/app.js?v=0.3.5"></script>
 </body>
 </html>

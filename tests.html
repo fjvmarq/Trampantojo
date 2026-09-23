@@ -18,9 +18,9 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.2.2';
-    import * as S from './js/store.js?v=0.2.2';
-    import { messageOfTheDay } from './js/messages.js?v=0.2.2';
+    import * as C from './js/calc.js?v=0.3.5';
+    import * as S from './js/store.js?v=0.3.5';
+    import { messageOfTheDay } from './js/messages.js?v=0.3.5';
 
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
@@ -103,6 +103,15 @@
     const tight = C.milestoneStatus({ date: '2026-10-29', kg: 92 }, sm);
     check('objetivo demasiado cerca = detrás (y dice cuánto hace falta)', tight.status === 'detras' && near(tight.needed, 1, 0.01), JSON.stringify(tight));
     check('objetivo con la fecha pasada sin tocarlo = pasado', C.milestoneStatus({ date: '2026-09-25', kg: 95 }, sm).status === 'pasado');
+
+    // la meta con fecha
+    check('ritmo para una fecha: 10 kg en 140 días = 0,5 kg/sem', near(C.rateForDate('2026-09-23', 80, 70, C.addDays('2026-09-23', 140)), 0.5, 0.001));
+    check('ritmo para una fecha pasada = sin dato', C.rateForDate('2026-09-23', 80, 70, '2026-09-01') === null);
+    check('fecha para un ritmo: 10 kg a 0,5 kg/sem = 140 días', C.dateForRate('2026-09-23', 80, 70, 0.5) === C.addDays('2026-09-23', 140));
+    const sd = C.summarize({ ...S.emptyState(), profile: { name: 'X', sex: 'h', birthDate: '1980-01-01', heightCm: 175, goalKg: 70, goalDate: C.addDays('2026-09-01', 140), rateKgWeek: 0.25, activity: 'ligero', plan: { startDate: '2026-09-01', startKg: 80 } }, weights: [{ date: '2026-09-01', kg: 80 }] }, '2026-09-01');
+    check('con fecha de meta, el ritmo del plan sale de la fecha (no del guardado)', near(sd.rateKgWeek, 0.5, 0.001), sd.rateKgWeek);
+    const mig = S.migrate({ profile: { goalKg: 70, rateKgWeek: 0.5, plan: { startDate: '2026-09-01', startKg: 80 } }, weights: [{ date: '2026-09-01', kg: 80 }] });
+    check('los datos viejos ganan una fecha de meta al migrar', mig.profile.goalDate === C.addDays('2026-09-01', 140), mig.profile.goalDate);
 
     // semanas y racha
     const wk = C.weeklyChanges(C.dailySeries(days('2026-07-01', 60, i => 100 - 0.1 * i)));

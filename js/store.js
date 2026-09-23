@@ -42,6 +42,14 @@ export function migrate(data) {
     const first = [...s.weights].sort((a, b) => a.date < b.date ? -1 : 1)[0];
     s.profile = { ...s.profile, plan: { startDate: first.date, startKg: first.kg } };
   }
+  // la meta lleva fecha desde la 0.3: si no la tiene, sale del ritmo que se eligió
+  if (s.profile && !s.profile.goalDate && s.profile.plan && s.profile.rateKgWeek > 0 && s.profile.plan.startKg > s.profile.goalKg) {
+    const days = Math.ceil((s.profile.plan.startKg - s.profile.goalKg) / (s.profile.rateKgWeek / 7));
+    const d = new Date(s.profile.plan.startDate + 'T12:00:00');
+    d.setDate(d.getDate() + days);
+    const pad = n => String(n).padStart(2, '0');
+    s.profile = { ...s.profile, goalDate: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` };
+  }
   // (aquí irán los pasos de schema 1 → 2 → …, sin quitar nunca campos que no se conozcan)
   s.schema = SCHEMA;
   return s;

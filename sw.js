@@ -10,17 +10,18 @@
 
    Tus datos NO están aquí: están en localStorage, y este fichero no los toca. */
 
-const CACHE = 'trampantojo-0.2.2';
+const CACHE = 'trampantojo-0.3.5';
 
 const FILES = [
   './',
   'index.html',
-  'css/app.css?v=0.2.2',
-  'js/app.js?v=0.2.2',
-  'js/calc.js?v=0.2.2',
-  'js/charts.js?v=0.2.2',
-  'js/messages.js?v=0.2.2',
-  'js/store.js?v=0.2.2',
+  'css/app.css?v=0.3.5',
+  'js/app.js?v=0.3.5',
+  'js/ambient.js?v=0.3.5',
+  'js/calc.js?v=0.3.5',
+  'js/charts.js?v=0.3.5',
+  'js/messages.js?v=0.3.5',
+  'js/store.js?v=0.3.5',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-192.png',

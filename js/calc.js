@@ -273,6 +273,24 @@ export function planDateForKg(plan, rateKgWeek, kg) {
   return addDays(plan.startDate, Math.ceil((plan.startKg - kg) / (rateKgWeek / 7)));
 }
 
+/* Ritmo que hace falta para ir de un peso a otro para una fecha (kg por semana).
+   null si la fecha no es posterior o no hay nada que bajar. */
+export function rateForDate(fromDate, fromKg, goalKg, goalDate) {
+  if (!goalDate || !fromDate) return null;
+  const days = daysBetween(fromDate, goalDate);
+  if (days <= 0 || fromKg <= goalKg) return null;
+  return (fromKg - goalKg) / days * 7;
+}
+
+// Día en que se llega a la meta desde un peso a un ritmo dado.
+export function dateForRate(fromDate, fromKg, goalKg, rateKgWeek) {
+  if (!(rateKgWeek > 0) || fromKg <= goalKg) return fromDate;
+  return addDays(fromDate, Math.ceil((fromKg - goalKg) / (rateKgWeek / 7)));
+}
+
+// El ritmo más rápido que la app considera sano (kg por semana).
+export const MAX_RATE = 1;
+
 export function paceStatus(trendKg, planKg) {
   if (planKg == null) return null;
   const diff = trendKg - planKg;            // + = por encima del plan (detrás)
@@ -334,12 +352,15 @@ export function summarize(state, today = todayISO()) {
   s.bmr = b;
   s.tdee = tdee(b, profile.activity);
   s.maintain = s.trendKg - profile.goalKg <= 0.25;
-  s.target = targetKcal({ tdee: s.tdee, rateKgWeek: profile.rateKgWeek, sex: profile.sex, maintain: s.maintain });
+  // el plan manda sobre el ritmo: con fecha de meta, el ritmo sale de la fecha
+  s.plan = profile.plan || { startDate: entries[0].date, startKg: entries[0].kg };
+  s.goalDate = profile.goalDate || planDateForKg(s.plan, profile.rateKgWeek, profile.goalKg);
+  s.rateKgWeek = rateForDate(s.plan.startDate, s.plan.startKg, profile.goalKg, s.goalDate) ?? profile.rateKgWeek;
+  s.target = targetKcal({ tdee: s.tdee, rateKgWeek: s.rateKgWeek, sex: profile.sex, maintain: s.maintain });
 
   s.rate = rateKgPerWeek(entries, last.date);
-  s.plan = profile.plan || { startDate: entries[0].date, startKg: entries[0].kg };
-  s.planKgToday = planKgAt(s.plan, profile.rateKgWeek, profile.goalKg, today);
-  s.planEnd = planDateForKg(s.plan, profile.rateKgWeek, profile.goalKg);
+  s.planKgToday = planKgAt(s.plan, s.rateKgWeek, profile.goalKg, today);
+  s.planEnd = planDateForKg(s.plan, s.rateKgWeek, profile.goalKg);
   s.pace = s.maintain ? null : paceStatus(s.trendKg, s.planKgToday);
   s.projection = projectGoal({ trendKg: s.trendKg, goalKg: profile.goalKg, perWeek: s.rate?.perWeek ?? null, fromDate: today });
   s.weekly = weeklyChanges(daily);

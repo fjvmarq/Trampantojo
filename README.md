@@ -6,9 +6,13 @@ sin el baile diario del agua), tu ritmo real, cuándo llegarás a tu meta y los
 números de salud que salen de tu perfil. Con mensajes de ánimo hechos con tus
 propios datos.
 
-Estética de la suite **BIMIO**: mismos colores (claro y oscuro), tipografía de
-Apple, listas agrupadas tipo Ajustes, control segmentado y el papel
-cuadriculado de bimio.tools.
+Estética de **bimio.tools**, sacada de su propio CSS: los mismos colores, las
+tarjetas blancas con borde fino, las etiquetas en mayúsculas espaciadas, los
+botones de píldora, el titular con degradado azul-turquesa y el fondo vivo
+(cuadrícula de delineante, manchas de color que se mueven y la constelación).
+**Claro por defecto**, como la web; en Perfil › Apariencia se elige Oscuro o
+Auto (el del móvil). Los desplegables son hojas propias al estilo Apple: los del
+navegador salían ilegibles en modo oscuro.
 
 **Todo se queda en el móvil.** Sin cuentas, sin servidor, sin anuncios.
 
@@ -52,7 +56,7 @@ carga, si el service worker está activo y cuántas pesadas hay guardadas.
 | Tendencia | Suavizado doble de Holt (10 % el dato del día, 5 % la pendiente). Una media simple se quedaba ~0,6 kg por detrás al bajar medio kilo a la semana |
 | Ritmo real | Recta de mínimos cuadrados sobre las pesadas de las últimas 3 semanas (mín. 4 pesadas en 7 días) |
 | Fecha de la meta | Kilos que faltan ÷ ritmo real |
-| Tu plan | Recta desde donde empezaste, al ritmo elegido, hasta la meta. En la gráfica es un **carril** de ±0,5 kg: dentro, vas bien; por debajo, por delante; por encima, por detrás. Cambiar la meta o el ritmo lo reinicia desde hoy |
+| Tu plan | Recta desde donde empezaste hasta tu peso objetivo **en la fecha que elijas** («¿para cuándo?»); el ritmo sale de la fecha, o eliges un ritmo y te pone la fecha. Nunca más de 1 kg/semana. En la gráfica de Hoy («tu camino») es la **línea a seguir**, desde el primer día hasta la bandera de la meta; ±0,5 kg alrededor es ir en tu línea. Cambiar la meta o la fecha lo reinicia desde hoy |
 | Objetivos intermedios | Un peso para una fecha («88 kg para Navidad»): un rombo en la gráfica. **Conseguido** si la tendencia llegó antes de la fecha; si no, se mira a dónde llegas a tu ritmo real y cuántos kg/semana harían falta |
 | IMC y peso saludable | Zonas de la OMS (18,5 – 24,9) |
 | Metabolismo basal | Mifflin-St Jeor |
@@ -85,7 +89,8 @@ python -m http.server 8791
 | `js/store.js` | guardar y leer, copias internas, copia en fichero |
 | `js/charts.js` | los gráficos en SVG, sin librerías |
 | `js/messages.js` | el mensaje del día |
-| `js/app.js` | el hilo: pantallas y formularios |
+| `js/app.js` | el hilo: pantallas, formularios, selectores y tema |
+| `js/ambient.js` | el fondo vivo (constelación y paralaje), portado de bimio.tools |
 | `sw.js` | funcionar sin conexión |
 | `tools/version.py` | sube la versión en todos los sitios a la vez |
 
