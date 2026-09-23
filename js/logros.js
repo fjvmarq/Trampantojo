@@ -4,8 +4,9 @@
    si borras una pesada que lo sostenía, el logro no se inventa. La fecha en
    que se consiguió sí se guarda, para poder felicitarte una sola vez. */
 
-import { addDays, daysBetween, bmiZone, bmi, dayKcal } from './calc.js?v=0.8.2';
-import { qualityMix } from './calidad.js?v=0.8.2';
+import { addDays, daysBetween, bmiZone, bmi, dayKcal } from './calc.js?v=0.9.0';
+import { qualityMix } from './calidad.js?v=0.9.0';
+import { bestWeekMinutes } from './ejercicio.js?v=0.9.0';
 
 /* ── agua ───────────────────────────────────────────────────────────── */
 
@@ -43,6 +44,8 @@ export const BADGES = [
   { id: 'comidas7', glyph: '✎', title: 'Diario de comidas', desc: 'Siete días con las comidas apuntadas.', test: c => c.foodDays >= 7 },
   { id: 'plato', glyph: '★', title: 'Tu primer plato', desc: 'Guardaste un plato para apuntarlo de un toque.', test: c => c.dishes >= 1 },
   { id: 'agua7', glyph: 'H₂O', title: 'Bien hidratado', desc: 'Siete días llegando a tu agua.', test: c => c.waterDays >= 7 },
+  { id: 'entreno', glyph: '↗', title: 'En marcha', desc: 'Apuntaste tu primer ejercicio.', test: c => c.exerciseDays >= 1 },
+  { id: 'oms150', glyph: '150', title: 'Lo que pide la OMS', desc: 'Una semana con 150 minutos de ejercicio o más.', test: c => c.bestWeek >= 150 },
   { id: 'verde7', glyph: '●', title: 'Comida de verdad', desc: 'Siete días con al menos el 70 % de tus calorías de las buenas.', test: c => c.greenDays >= 7 },
   { id: 'objetivo', glyph: '◆', title: 'Objetivo cumplido', desc: 'Conseguiste un objetivo intermedio.', test: c => c.milestonesDone >= 1 },
   { id: 'meta', glyph: '✓', title: '¡Meta!', desc: 'Llegaste a tu peso objetivo.', test: c => c.goalReached },
@@ -65,6 +68,8 @@ export function badgeContext(state, s) {
     foodDays: Object.keys(state.food || {}).filter(d => dayKcal(state.food, d) >= 800).length,
     dishes: (state.dishes || []).length,
     waterDays: Object.values(water).filter(n => n >= goal).length,
+    exerciseDays: Object.keys(state.exercise || {}).length,
+    bestWeek: bestWeekMinutes(state.exercise),
     greenDays: Object.entries(state.food || {}).filter(([, list]) => {
       const m = qualityMix(list, state);
       return m.known >= 800 && m.pct.b >= 0.7;
@@ -107,6 +112,7 @@ export function weekSummary(state, daily, today, sex) {
       avgWater: water.reduce((a, b) => a + b, 0) / days.length,
       cravings: cr.length,
       beaten: cr.filter(c => c.outcome === 'resistido' || c.outcome === 'alternativa').length,
+      exMinutes: days.reduce((a, d) => a + (state.exercise?.[d] || []).reduce((b, e) => b + (e.minutes || 0), 0), 0),
     };
   };
   const endT = trendAt.get(today) ?? [...(daily || [])].reverse().find(d => d.date <= today)?.trend;

@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/app.css?v=0.8.2">
+  <link rel="stylesheet" href="css/app.css?v=0.9.0">
 </head>
 <body>
   <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
@@ -82,6 +82,17 @@
             <span class="water-count" id="water-count"></span>
           </div>
           <div class="glasses" id="glasses" role="group" aria-label="Vasos de agua"></div>
+        </div>
+
+        <div class="card exercise" id="exercise-card">
+          <div class="water-head">
+            <p class="eyebrow">Ejercicio hoy</p>
+            <span class="water-count" id="exercise-count"></span>
+          </div>
+          <ul class="ex-list" id="exercise-list"></ul>
+          <div class="meter ex-meter" role="presentation"><span id="exercise-bar"></span></div>
+          <p class="card-foot" id="exercise-week"></p>
+          <button type="button" class="btn ghost small" id="exercise-add">+ Apuntar ejercicio</button>
         </div>
 
         <div class="card hero" id="hero-card">
@@ -169,6 +180,11 @@
           <div class="chart-box" id="chart-kcal"></div>
         </div>
         <div class="card">
+          <p class="eyebrow">Ejercicio por semana</p>
+          <p class="card-sub" id="exercise-chart-sub"></p>
+          <div class="qchart exchart" id="chart-exercise"></div>
+        </div>
+        <div class="card">
           <p class="eyebrow">La calidad de tus calorías</p>
           <p class="card-sub" id="quality-chart-sub"></p>
           <div class="qchart" id="chart-quality"></div>
@@ -234,6 +250,7 @@
             <label class="item"><span class="item-title">Minutos cada vez</span><input name="exerciseMinutes" type="text" inputmode="numeric" placeholder="0"></label>
             <button type="button" class="item picker" data-picker="work"><span class="item-title">Trabajo</span><span class="picker-value" data-for="work"></span><span class="chev" aria-hidden="true"></span></button>
             <button type="button" class="item picker" data-picker="steps"><span class="item-title">Pasos al día</span><span class="picker-value" data-for="steps"></span><span class="chev" aria-hidden="true"></span></button>
+            <button type="button" class="item picker" data-picker="exerciseCredit"><span class="item-title">Calorías del ejercicio</span><span class="picker-value" data-for="exerciseCredit"></span><span class="chev" aria-hidden="true"></span></button>
           </div>
           <p class="section-foot" id="habits-suggest"></p>
 
@@ -244,7 +261,7 @@
             <label class="item"><span class="item-title">No me gusta</span><input name="dislikes" type="text" placeholder="Coliflor…"></label>
             <label class="item"><span class="item-title">Alergias</span><input name="allergies" type="text" placeholder="Lactosa…"></label>
           </div>
-          <input type="hidden" name="work"><input type="hidden" name="steps"><input type="hidden" name="oil"><input type="hidden" name="portions">
+          <input type="hidden" name="work"><input type="hidden" name="steps"><input type="hidden" name="oil"><input type="hidden" name="portions"><input type="hidden" name="exerciseCredit">
           <p class="section-foot">Con esto afino tu gasto, y en la próxima versión los consejos de comida.</p>
 
           <p class="section-label">Tus razones</p>
@@ -482,6 +499,34 @@
   </dialog>
 
   <!-- ── Tengo un antojo ─────────────────────────────────────── -->
+  <dialog id="exercise-dialog" class="sheet">
+    <div class="sheet-grabber" aria-hidden="true"></div>
+    <div class="sheet-bar">
+      <button type="button" class="bar-btn" id="ex-cancel">Cancelar</button>
+      <h2>Apuntar ejercicio</h2>
+      <span></span>
+    </div>
+    <p class="crv-q">¿Qué has hecho?</p>
+    <div class="crv-types ex-types" id="ex-types"></div>
+    <p class="crv-q">¿Cuánto rato?</p>
+    <div class="segmented" role="radiogroup" aria-label="Minutos" id="ex-minutes"></div>
+    <div class="group spaced-group">
+      <div class="item">
+        <span class="item-title">Minutos</span>
+        <div class="stepper">
+          <button type="button" id="ex-minus" aria-label="Menos">−</button>
+          <input id="ex-qty" type="text" inputmode="numeric" aria-label="Minutos" value="30">
+          <button type="button" id="ex-plus" aria-label="Más">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="card result">
+      <p class="hero-value"><span id="ex-kcal">0 kcal</span></p>
+      <p class="card-foot" id="ex-note"></p>
+    </div>
+    <button type="button" class="btn primary block" id="ex-save">Apuntar</button>
+  </dialog>
+
   <dialog id="craving-dialog" class="sheet tall">
     <div class="sheet-grabber" aria-hidden="true"></div>
     <div class="sheet-bar">
@@ -628,6 +673,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.8.2"></script>
+  <script type="module" src="js/app.js?v=0.9.0"></script>
 </body>
 </html>

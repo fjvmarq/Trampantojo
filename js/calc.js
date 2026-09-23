@@ -396,6 +396,14 @@ export function summarize(state, today = todayISO()) {
   s.goalDate = profile.goalDate || planDateForKg(s.plan, profile.rateKgWeek, profile.goalKg);
   s.rateKgWeek = rateForDate(s.plan.startDate, s.plan.startKg, profile.goalKg, s.goalDate) ?? profile.rateKgWeek;
   s.target = targetKcal({ tdee: s.tdee, rateKgWeek: s.rateKgWeek, sex: profile.sex, maintain: s.maintain });
+  // el ejercicio de hoy; por defecto NO se suma (tu actividad ya cuenta el habitual
+  // y las estimaciones se pasan); en Perfil se puede sumar la mitad o todo
+  const exToday = (state.exercise?.[today] || []);
+  s.exerciseToday = { minutes: exToday.reduce((a, e) => a + (e.minutes || 0), 0), kcal: exToday.reduce((a, e) => a + (e.kcal || 0), 0), list: exToday };
+  const credit = ({ mitad: 0.5, todo: 1 })[state.habits?.exerciseCredit] || 0;
+  s.exerciseCredit = Math.round(s.exerciseToday.kcal * credit);
+  s.targetBase = s.target;
+  if (s.exerciseCredit > 0) s.target = { ...s.target, kcal: s.target.kcal + s.exerciseCredit, exercise: s.exerciseCredit };
 
   s.rate = rateKgPerWeek(entries, last.date);
   s.planKgToday = planKgAt(s.plan, s.rateKgWeek, profile.goalKg, today);

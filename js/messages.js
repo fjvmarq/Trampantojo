@@ -4,8 +4,8 @@
    decide cuál, para que no cambie cada vez que abres la app.
    Tono: de apoyo, nunca de culpa. Un día malo no es un fracaso. */
 
-import { kg1, shortDate } from './charts.js?v=0.8.2';
-import { daysBetween } from './calc.js?v=0.8.2';
+import { kg1, shortDate } from './charts.js?v=0.9.0';
+import { daysBetween } from './calc.js?v=0.9.0';
 
 const pct1 = v => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(v);
 
@@ -100,6 +100,9 @@ export function messageOfTheDay(s, profile, now = new Date()) {
       }
       const won = cr.filter(c => c.date === s.today && (c.outcome === 'resistido' || c.outcome === 'alternativa')).length;
       if (won) add(5, won === 1 ? 'Antojo vencido' : `${won} antojos vencidos hoy`, 'Cada vez que dejas pasar la ola, el hábito se debilita un poco. Así se cambia de verdad.');
+    }
+    if (s.exerciseToday?.minutes >= 20) {
+      add(4, `Hoy te has movido ${s.exerciseToday.minutes} minutos`, 'El ejercicio no es para ganarte la comida: es lo que hace que lo que pierdas sea grasa y no músculo, y que duermas y comas mejor.');
     }
     add(1, name ? `Hola, ${name}` : 'Hola',
       'Un día bueno no te hace delgado y un día malo no te hace gordo. Lo que cuenta es la línea, y la línea la haces tú.');

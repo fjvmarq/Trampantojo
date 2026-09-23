@@ -43,3 +43,44 @@ export function weekMinutes(exercise, today, addDays) {
   for (let i = 0; i < 7; i++) m += dayExercise(exercise, addDays(today, -i)).minutes;
   return m;
 }
+
+// Un apunte: la actividad, los minutos y lo que se estima que gasta con tu peso.
+export function exerciseEntry(actId, minutes, kg, now = Date.now()) {
+  const a = ACT_BY_ID.get(actId);
+  if (!a || !(minutes > 0)) return null;
+  return {
+    id: `e${now.toString(36)}${Math.random().toString(36).slice(2, 5)}`,
+    act: a.id, minutes: Math.round(minutes), kcal: Math.round(burned(a.met, kg, minutes)), t: now,
+  };
+}
+
+// Las últimas n semanas de lunes a domingo, con sus minutos (la última es la actual).
+export function weeksMinutes(exercise, today, addDays, n = 8) {
+  const d = new Date(today + 'T12:00:00');
+  const monday = addDays(today, -((d.getDay() + 6) % 7));
+  const out = [];
+  for (let w = n - 1; w >= 0; w--) {
+    const start = addDays(monday, -7 * w);
+    let minutes = 0, kcal = 0;
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(start, i);
+      if (day > today) break;
+      const x = dayExercise(exercise, day);
+      minutes += x.minutes; kcal += x.kcal;
+    }
+    out.push({ start, minutes, kcal, current: w === 0 });
+  }
+  return out;
+}
+
+// La mejor semana de calendario (para el logro de los 150 minutos).
+export function bestWeekMinutes(exercise) {
+  const byWeek = new Map();
+  for (const [day, list] of Object.entries(exercise || {})) {
+    const d = new Date(day + 'T12:00:00');
+    d.setDate(d.getDate() - (d.getDay() + 6) % 7);
+    const key = d.toISOString().slice(0, 10);
+    byWeek.set(key, (byWeek.get(key) || 0) + (list || []).reduce((a, e) => a + (e.minutes || 0), 0));
+  }
+  return Math.max(0, ...byWeek.values());
+}

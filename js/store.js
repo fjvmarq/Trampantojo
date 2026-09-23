@@ -23,7 +23,7 @@ export const SCHEMA = 1;
 let lastLoad = 'empty';
 
 export function emptyState() {
-  return { schema: SCHEMA, profile: null, habits: {}, weights: [], milestones: [], food: {}, dishes: [], products: {}, recentFoods: [], cravings: [], water: {}, meta: {} };
+  return { schema: SCHEMA, profile: null, habits: {}, weights: [], milestones: [], food: {}, dishes: [], products: {}, recentFoods: [], cravings: [], water: {}, exercise: {}, meta: {} };
 }
 
 export function migrate(data) {
@@ -48,6 +48,14 @@ export function migrate(data) {
   if (!Array.isArray(s.recentFoods)) s.recentFoods = [];
   // agua (desde la 0.7): vasos por día
   if (!s.water || typeof s.water !== 'object' || Array.isArray(s.water)) s.water = {};
+  // ejercicio (desde la 0.9): por día, cada apunte con sus minutos y kcal estimadas
+  if (!s.exercise || typeof s.exercise !== 'object' || Array.isArray(s.exercise)) s.exercise = {};
+  for (const [d, arr] of Object.entries(s.exercise)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !Array.isArray(arr)) { delete s.exercise[d]; continue; }
+    s.exercise[d] = arr.filter(e => e && e.act && Number(e.minutes) > 0)
+      .map(e => ({ ...e, minutes: Number(e.minutes), kcal: Number(e.kcal) || 0 }));
+    if (!s.exercise[d].length) delete s.exercise[d];
+  }
   // antojos (desde la 0.5): cuándo, qué, cómo estabas y cómo acabó
   if (!Array.isArray(s.cravings)) s.cravings = [];
   s.cravings = s.cravings.filter(c => c && c.id && typeof c.date === 'string' && Number.isFinite(c.hour));

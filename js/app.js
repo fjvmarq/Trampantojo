@@ -2,19 +2,20 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.8.2';
-import * as S from './store.js?v=0.8.2';
-import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.8.2';
-import { initComidas } from './comidas.js?v=0.8.2';
-import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.8.2';
-import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.8.2';
-import { messageOfTheDay } from './messages.js?v=0.8.2';
-import { startAmbient } from './ambient.js?v=0.8.2';
-import { qualityMix } from './calidad.js?v=0.8.2';
-import * as CP from './copia.js?v=0.8.2';
-import * as AG from './agua.js?v=0.8.2';
+import * as C from './calc.js?v=0.9.0';
+import * as S from './store.js?v=0.9.0';
+import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.9.0';
+import { initComidas } from './comidas.js?v=0.9.0';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.9.0';
+import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.9.0';
+import { messageOfTheDay } from './messages.js?v=0.9.0';
+import { startAmbient } from './ambient.js?v=0.9.0';
+import { qualityMix } from './calidad.js?v=0.9.0';
+import * as CP from './copia.js?v=0.9.0';
+import * as AG from './agua.js?v=0.9.0';
+import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.9.0';
 
-const VERSION = '0.8.2';
+const VERSION = '0.9.0';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -157,6 +158,7 @@ function renderHoy(s) {
       : `La última vez: ${kg1(s.latest.kg)} kg, el ${longDate(s.latest.date)}.`;
 
   renderWater(s);
+  renderExercise(s);
 
   // mensaje (el lunes, con el resumen de tu semana)
   s.week = weekSummary(state, s.daily, s.today, p.sex);
@@ -345,6 +347,7 @@ function renderEvo(s) {
   renderWeek(s);
   renderBadges(s);
   kcalChart($('#chart-kcal'), { food: state.food, target: s.target?.kcal, today: s.today });
+  renderExerciseChart(s);
   renderQualityChart(s);
   renderCravingCard($('#craving-card'), state.cravings, s.today, state.food, s.protein ? (s.protein[0] + s.protein[1]) / 2 : null);
 
@@ -446,6 +449,142 @@ function renderWater(s) {
     });
     box.appendChild(b);
   }
+}
+
+/* ── ejercicio ──────────────────────────────────────────────────────── */
+
+const minFmt = m => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
+
+function renderExercise(s) {
+  const ex = s.exerciseToday || { minutes: 0, kcal: 0, list: [] };
+  $('#exercise-count').textContent = ex.minutes ? `${minFmt(ex.minutes)} · ${kcal(ex.kcal)} kcal` : 'Nada todavía';
+  const ul = $('#exercise-list');
+  ul.replaceChildren();
+  ex.list.forEach(e => {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ex-chip';
+    b.setAttribute('aria-label', `Quitar ${ACT_BY_ID.get(e.act)?.label || e.act}, ${e.minutes} minutos`);
+    b.textContent = `${ACT_BY_ID.get(e.act)?.label || e.act} · ${minFmt(e.minutes)} · ${kcal(e.kcal)} kcal`;
+    const x = document.createElement('span'); x.className = 'ex-x'; x.setAttribute('aria-hidden', 'true'); x.textContent = '×';
+    b.appendChild(x);
+    b.addEventListener('click', () => {
+      if (!confirm(`¿Quitar ${b.textContent.replace(/×$/, '').trim()}?`)) return;
+      state.exercise[s.today] = (state.exercise[s.today] || []).filter(y => y.id !== e.id);
+      if (!state.exercise[s.today].length) delete state.exercise[s.today];
+      if (persist('Quitado.')) render();
+    });
+    li.appendChild(b);
+    ul.appendChild(li);
+  });
+  const week = weekMinutes(state.exercise, s.today, C.addDays);
+  $('#exercise-bar').style.width = `${Math.min(100, week / WHO_WEEKLY_MIN * 100)}%`;
+  $('#exercise-bar').className = week >= WHO_WEEKLY_MIN ? 'done' : '';
+  const credit = s.exerciseCredit > 0 ? ` Hoy suma ${kcal(s.exerciseCredit)} kcal a lo que puedes comer.` : '';
+  $('#exercise-week').textContent = week >= WHO_WEEKLY_MIN
+    ? `Últimos 7 días: ${minFmt(week)}. Ya pasas de los 150 minutos que recomienda la OMS.${credit}`
+    : `Últimos 7 días: ${minFmt(week)} de los 150 que recomienda la OMS.${credit}`;
+}
+
+const edlg = $('#exercise-dialog');
+let exChoice = { act: 'andar-rapido', minutes: 30 };
+const EX_PRESETS = [15, 30, 45, 60, 90];
+
+function exWeight() {
+  const s = C.summarize(state, today());
+  return s.trendKg || s.latest?.kg || 75;
+}
+
+function updateExerciseSheet() {
+  const a = ACT_BY_ID.get(exChoice.act);
+  $$('#ex-types .crv-type').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.act === exChoice.act)));
+  $$('#ex-minutes button').forEach(b => b.setAttribute('aria-checked', String(Number(b.dataset.m) === exChoice.minutes)));
+  $('#ex-qty').value = String(exChoice.minutes);
+  const kg = exWeight();
+  $('#ex-kcal').textContent = `≈ ${kcal(burned(a.met, kg, exChoice.minutes))} kcal`;
+  $('#ex-note').textContent = `${a.label}, ${minFmt(exChoice.minutes)}, con tu peso (${kg1(kg)} kg). Es una estimación: sirve para comparar, no para cuadrar al gramo.`;
+}
+
+function openExercise() {
+  const grid = $('#ex-types');
+  if (!grid.children.length) {
+    ACTIVITIES.forEach(a => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'crv-type';
+      b.dataset.act = a.id;
+      const l = document.createElement('span'); l.className = 'crv-type-label'; l.textContent = a.label;
+      b.appendChild(l);
+      b.addEventListener('click', () => { exChoice.act = a.id; updateExerciseSheet(); });
+      grid.appendChild(b);
+    });
+    const seg = $('#ex-minutes');
+    EX_PRESETS.forEach(m => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('role', 'radio');
+      b.dataset.m = String(m);
+      b.textContent = m >= 60 ? minFmt(m).replace(' 0 min', '') : `${m}′`;
+      b.addEventListener('click', () => { exChoice.minutes = m; updateExerciseSheet(); });
+      seg.appendChild(b);
+    });
+  }
+  exChoice = { act: state.meta?.lastExercise || 'andar-rapido', minutes: 30 };
+  updateExerciseSheet();
+  edlg.showModal();
+}
+
+$('#exercise-add').addEventListener('click', openExercise);
+$('#ex-cancel').addEventListener('click', () => edlg.close());
+edlg.addEventListener('click', e => { if (e.target === edlg) edlg.close(); });
+$('#ex-minus').addEventListener('click', () => { exChoice.minutes = Math.max(5, exChoice.minutes - 5); updateExerciseSheet(); });
+$('#ex-plus').addEventListener('click', () => { exChoice.minutes = Math.min(600, exChoice.minutes + 5); updateExerciseSheet(); });
+$('#ex-qty').addEventListener('change', e => {
+  const v = Math.round(num(e.target.value));
+  if (v > 0 && v <= 600) exChoice.minutes = v;
+  updateExerciseSheet();
+});
+$('#ex-save').addEventListener('click', () => {
+  const v = Math.round(num($('#ex-qty').value));
+  if (v > 0 && v <= 600) exChoice.minutes = v;
+  const entry = exerciseEntry(exChoice.act, exChoice.minutes, exWeight());
+  if (!entry) { toast('Elige qué has hecho y cuántos minutos.', true); return; }
+  const d = today();
+  state.exercise = { ...(state.exercise || {}), [d]: [...(state.exercise?.[d] || []), entry] };
+  state.meta = { ...state.meta, lastExercise: entry.act };
+  if (persist(`${ACT_BY_ID.get(entry.act).label}, ${minFmt(entry.minutes)}: unas ${kcal(entry.kcal)} kcal.`)) { edlg.close(); render(); }
+});
+
+// Evolución: los minutos de cada semana frente a los 150 de la OMS
+function renderExerciseChart(s) {
+  const box = $('#chart-exercise');
+  box.replaceChildren();
+  const weeks = weeksMinutes(state.exercise, s.today, C.addDays, 8);
+  const any = weeks.some(w => w.minutes > 0);
+  const cur = weeks[weeks.length - 1], prev = weeks[weeks.length - 2];
+  $('#exercise-chart-sub').textContent = !any
+    ? 'Cuando apuntes ejercicio en Hoy, aquí verás tus minutos de cada semana frente a los 150 que recomienda la OMS.'
+    : `Esta semana llevas ${minFmt(cur.minutes)}; la anterior, ${minFmt(prev.minutes)}. La raya marca los 150 minutos de la OMS: más que quemar calorías, el ejercicio te ayuda a no perder músculo mientras adelgazas.`;
+  if (!any) return;
+  const max = Math.max(WHO_WEEKLY_MIN * 1.2, ...weeks.map(w => w.minutes));
+  const line = document.createElement('div');
+  line.className = 'ex-who';
+  line.style.bottom = `calc(18px + (100% - 18px) * ${WHO_WEEKLY_MIN / max})`;
+  box.appendChild(line);
+  weeks.forEach(w => {
+    const col = document.createElement('div');
+    col.className = 'qcol';
+    const bar = document.createElement('div');
+    bar.className = `exbar${w.minutes >= WHO_WEEKLY_MIN ? ' done' : ''}${w.current ? ' cur' : ''}`;
+    bar.style.height = `calc((100% - 18px) * ${w.minutes / max})`;
+    bar.title = `Semana del ${longDate(w.start)}: ${minFmt(w.minutes)}`;
+    const l = document.createElement('span');
+    l.className = 'qday-l';
+    l.textContent = w.current ? 'esta' : new Date(w.start + 'T12:00').getDate();
+    col.append(bar, l);
+    box.appendChild(col);
+  });
 }
 
 /* ── recordatorios de agua ──────────────────────────────────────────── */
@@ -565,7 +704,7 @@ function renderQualityChart(s) {
     col.className = 'qcol';
     const stack = document.createElement('div');
     stack.className = 'qstack';
-    stack.style.height = `${(m.known / max) * 100}%`;
+    stack.style.height = `calc((100% - 18px) * ${m.known / max})`;
     stack.title = m.known ? `${longDate(d)}: ${Math.round(m.pct.b * 100)} % buenas, ${Math.round(m.pct.m * 100)} % a evitar` : longDate(d);
     ['m', 'r', 'b'].forEach(c => {
       if (!m.kcal[c]) return;
@@ -622,6 +761,7 @@ function renderWeek(s) {
   item('Calorías de media', k == null ? '—' : `${kcal(k)}`, k != null && kp != null ? `${k <= kp ? '−' : '+'}${kcal(Math.abs(k - kp))} frente a la anterior` : `${w.cur.foodDays} de 7 días apuntados`, k != null && kp != null && k <= kp);
   item('Antojos vencidos', `${w.cur.beaten} de ${w.cur.cravings}`, w.prev.cravings ? `la anterior: ${w.prev.beaten} de ${w.prev.cravings}` : null, false);
   item('Agua al día', `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(w.cur.avgWater)} vasos`, `tu objetivo: ${w.waterGoal}`, w.cur.avgWater >= w.waterGoal);
+  item('Ejercicio', minFmt(w.cur.exMinutes), w.prev.exMinutes ? `la anterior: ${minFmt(w.prev.exMinutes)}` : 'la OMS: 150 min', w.cur.exMinutes >= WHO_WEEKLY_MIN);
   item('Días pesándote', `${w.cur.weighIns} de 7`, null, false);
   box.append(t, sub, grid);
 }
@@ -920,6 +1060,11 @@ const PICKERS = {
   oil: { title: 'Aceite al cocinar', options: () => [
     { value: '', label: 'Sin decir' }, { value: 'poco', label: 'Poco' }, { value: 'normal', label: 'Normal' }, { value: 'mucho', label: 'Bastante' },
   ] },
+  exerciseCredit: { title: 'Calorías del ejercicio', foot: 'Lo que se estima que quema el ejercicio es orientativo y suele pasarse, y tu nivel de actividad ya cuenta el ejercicio de siempre. Por eso, por defecto, no se suma a lo que puedes comer.', options: () => [
+    { value: '', label: 'No sumarlas', hint: 'recomendado' },
+    { value: 'mitad', label: 'Sumar la mitad', hint: 'un término medio prudente' },
+    { value: 'todo', label: 'Sumarlas todas', hint: 'si el ejercicio es extra, no el de siempre' },
+  ] },
   wevery: { title: 'Avisarme si no bebo en', options: () => [
     { value: '1', label: '1 hora' }, { value: '1.5', label: '1 h 30 min' }, { value: '2', label: '2 horas' }, { value: '3', label: '3 horas' },
   ] },
@@ -1168,13 +1313,13 @@ $('#goal-delete').addEventListener('click', () => {
 
 /* ── hábitos ────────────────────────────────────────────────────────── */
 
-const HABIT_FIELDS = ['exerciseType', 'exerciseDays', 'exerciseMinutes', 'work', 'steps', 'oil', 'portions', 'dislikes', 'allergies', 'reasons'];
+const HABIT_FIELDS = ['exerciseType', 'exerciseDays', 'exerciseMinutes', 'work', 'steps', 'exerciseCredit', 'oil', 'portions', 'dislikes', 'allergies', 'reasons'];
 
 function fillHabitsForm() {
   const f = $('#habits-form');
   const h = state.habits || {};
   HABIT_FIELDS.forEach(k => { f.elements[k].value = h[k] ?? ''; });
-  ['work', 'steps', 'oil', 'portions'].forEach(k => setPickerValue(f, k, h[k] ?? ''));
+  ['work', 'steps', 'exerciseCredit', 'oil', 'portions'].forEach(k => setPickerValue(f, k, h[k] ?? ''));
 }
 
 function updateHabitsSuggest() {

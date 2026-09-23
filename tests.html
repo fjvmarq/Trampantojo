@@ -18,17 +18,17 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.8.2';
-    import * as S from './js/store.js?v=0.8.2';
-    import { messageOfTheDay } from './js/messages.js?v=0.8.2';
-    import * as FO from './js/foods.js?v=0.8.2';
-    import * as AN from './js/antojo.js?v=0.8.2';
-    import * as ID from './js/ideas.js?v=0.8.2';
-    import * as LG from './js/logros.js?v=0.8.2';
-    import * as CQ from './js/calidad.js?v=0.8.2';
-    import * as EJ from './js/ejercicio.js?v=0.8.2';
-    import * as BD from './js/cuerpo.js?v=0.8.2';
-    import * as AG from './js/agua.js?v=0.8.2';
+    import * as C from './js/calc.js?v=0.9.0';
+    import * as S from './js/store.js?v=0.9.0';
+    import { messageOfTheDay } from './js/messages.js?v=0.9.0';
+    import * as FO from './js/foods.js?v=0.9.0';
+    import * as AN from './js/antojo.js?v=0.9.0';
+    import * as ID from './js/ideas.js?v=0.9.0';
+    import * as LG from './js/logros.js?v=0.9.0';
+    import * as CQ from './js/calidad.js?v=0.9.0';
+    import * as EJ from './js/ejercicio.js?v=0.9.0';
+    import * as BD from './js/cuerpo.js?v=0.9.0';
+    import * as AG from './js/agua.js?v=0.9.0';
     import * as WK from './worker/agua.js';
 
     const out = document.getElementById('out');
@@ -226,6 +226,21 @@
     check('antojo: los antojos de calorías malas lo dicen', ['dulce', 'bolleria', 'refresco', 'alcohol', 'embutido'].every(id => AN.cravingQuality(AN.CRAVINGS.find(c => c.id === id)).q === 'm'));
     check('antojo: la napolitana sacia poco, las tostadas mucho', AN.satiety(AN.cravingQuality(AN.CRAVINGS.find(c => c.id === 'bolleria')).tags, 5) === 'poco' && AN.satiety(AN.swapFor(AN.CRAVINGS.find(c => c.id === 'bolleria')).tags, 15) !== 'poco');
     check('antojo: las alternativas de bebida existen', AN.alternatives('bebida', 3, {}).length >= 3 && AN.alternatives('bebida', 3, {}).every(a => AN.portionOf(a.food)));
+
+    // ejercicio
+    const exE = EJ.exerciseEntry('correr', 30, 80, 1000);
+    check('ejercicio: 30 min corriendo con 80 kg son unas 320 kcal', exE && exE.kcal === 320 && exE.minutes === 30 && exE.act === 'correr', JSON.stringify(exE));
+    check('ejercicio: sin minutos o actividad no hay apunte', EJ.exerciseEntry('correr', 0, 80) === null && EJ.exerciseEntry('volar', 30, 80) === null);
+    const exState = { '2026-09-21': [{ act: 'andar', minutes: 60, kcal: 200 }], '2026-09-23': [{ act: 'bici', minutes: 45, kcal: 360 }], '2026-09-14': [{ act: 'andar', minutes: 30, kcal: 100 }] };
+    const wks = EJ.weeksMinutes(exState, '2026-09-23', C.addDays, 3);
+    check('ejercicio: semanas de lunes a domingo (la actual, lunes 21)', wks.length === 3 && wks[2].start === '2026-09-21' && wks[2].minutes === 105 && wks[1].minutes === 30 && wks[2].current, JSON.stringify(wks));
+    check('ejercicio: la mejor semana', EJ.bestWeekMinutes(exState) === 105);
+    check('ejercicio: el store limpia apuntes rotos', (() => { const m = S.migrate({ exercise: { '2026-09-23': [{ act: 'bici', minutes: '45', kcal: 300 }, { act: 'bici', minutes: 0 }], 'mal': [] } }); return m.exercise['2026-09-23'].length === 1 && m.exercise['2026-09-23'][0].minutes === 45 && !m.exercise.mal; })());
+    const exProfile = { name: 'X', sex: 'h', birthDate: '1985-01-01', heightCm: 178, goalKg: 75, activity: 'ligero', rateKgWeek: 0.5 };
+    const exBase = { profile: exProfile, weights: [{ date: '2026-09-01', kg: 85 }, { date: '2026-09-23', kg: 84 }], exercise: { '2026-09-23': [{ act: 'correr', minutes: 30, kcal: 320 }] } };
+    const sNo = C.summarize({ ...exBase, habits: {} }, '2026-09-23'), sHalf = C.summarize({ ...exBase, habits: { exerciseCredit: 'mitad' } }, '2026-09-23');
+    check('ejercicio: por defecto no suma al objetivo; con «mitad», la mitad', sNo.exerciseCredit === 0 && sNo.target.kcal === sNo.targetBase.kcal && sHalf.exerciseCredit === 160 && Math.round(sHalf.target.kcal - sHalf.targetBase.kcal) === 160, `${sNo.target.kcal} / ${sHalf.target.kcal}`);
+    check('ejercicio: el resumen trae el ejercicio de hoy', sNo.exerciseToday.minutes === 30 && sNo.exerciseToday.kcal === 320);
 
     // recordatorios de agua
     const wBase = { count: 2, goal: 8, from: 10, to: 21, every: 2 };

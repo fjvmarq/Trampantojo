@@ -558,6 +558,23 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 
 /* la calidad del día (Comidas) y de los últimos 14 (Evolución) */
 #water-form { display: block; }
+/* ejercicio */
+.ex-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.ex-list:empty { display: none; }
+.ex-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px 6px 12px; border-radius: 980px; border: 1px solid var(--line);
+  background: var(--hover); color: var(--ink); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.ex-x { color: var(--ink-3); font-size: 16px; line-height: 1; }
+.ex-meter { margin: 12px 0 6px; }
+.ex-meter span.done { background: var(--ok); }
+#exercise-add { margin-top: 10px; }
+.ex-types .crv-type { min-height: 52px; }
+.ex-types .crv-type[aria-pressed="true"], .crv-type[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+#ex-minutes { margin-bottom: 4px; }
+.exchart { position: relative; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
+.exbar { border-radius: 6px 6px 3px 3px; min-height: 2px; background: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.exbar.cur { background: var(--accent); }
+.exbar.done { background: var(--ok); }
+.ex-who { position: absolute; left: 0; right: 0; border-top: 1.5px dashed color-mix(in srgb, var(--ok) 70%, transparent); pointer-events: none; }
 .backup-nudge { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
 .nudge-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .qday { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }

@@ -8,10 +8,10 @@
    Cada apunte guarda sus calorías y nutrientes CALCULADOS en el momento: si la
    tabla cambia en una versión futura, lo que comiste ayer no cambia. */
 
-import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.8.2';
-import { kg1 } from './charts.js?v=0.8.2';
-import { suggest } from './ideas.js?v=0.8.2';
-import { foodQuality, entryQuality, productQuality, qualityMix, tagLine, TYPES, QLABEL, QSHORT } from './calidad.js?v=0.8.2';
+import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.9.0';
+import { kg1 } from './charts.js?v=0.9.0';
+import { suggest } from './ideas.js?v=0.9.0';
+import { foodQuality, entryQuality, productQuality, qualityMix, tagLine, TYPES, QLABEL, QSHORT } from './calidad.js?v=0.9.0';
 
 export const MEALS = [
   { id: 'desayuno', label: 'Desayuno' },
@@ -523,9 +523,10 @@ export function initComidas(ctx) {
     const pct = target ? Math.min(1.25, tot.kcal / target) : 0;
     bar.style.width = `${Math.min(100, pct * 100)}%`;
     bar.className = tot.kcal > (target || Infinity) * 1.05 ? 'over' : '';
+    const exNote = isToday && s.target?.exercise ? ` (con ${int(s.target.exercise)} del ejercicio)` : '';
     $('#kcal-sub').textContent = !target ? ''
-      : tot.kcal <= target ? `de ${int(target)} kcal · te quedan ${int(target - tot.kcal)}`
-        : `de ${int(target)} kcal · ${int(tot.kcal - target)} de más`;
+      : tot.kcal <= target ? `de ${int(target)} kcal${exNote} · te quedan ${int(target - tot.kcal)}`
+        : `de ${int(target)} kcal${exNote} · ${int(tot.kcal - target)} de más`;
     const pr = s.protein;
     $('#macros').textContent = `${int(tot.p)} g de proteína${pr ? ` (lo tuyo: ${int(pr[0])}–${int(pr[1])} g)` : ''} · ${int(tot.c)} g hidratos · ${int(tot.f)} g grasa`;
 
