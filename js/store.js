@@ -23,7 +23,7 @@ export const SCHEMA = 1;
 let lastLoad = 'empty';
 
 export function emptyState() {
-  return { schema: SCHEMA, profile: null, habits: {}, weights: [], milestones: [], food: {}, dishes: [], products: {}, recentFoods: [], cravings: [], water: {}, exercise: {}, meta: {} };
+  return { schema: SCHEMA, profile: null, habits: {}, weights: [], milestones: [], food: {}, dishes: [], products: {}, recentFoods: [], cravings: [], water: {}, exercise: {}, photos: [], meta: {} };
 }
 
 export function migrate(data) {
@@ -56,6 +56,9 @@ export function migrate(data) {
       .map(e => ({ ...e, minutes: Number(e.minutes), kcal: Number(e.kcal) || 0 }));
     if (!s.exercise[d].length) delete s.exercise[d];
   }
+  // fotos (desde la 0.11): sólo la ficha; la imagen vive en IndexedDB
+  if (!Array.isArray(s.photos)) s.photos = [];
+  s.photos = s.photos.filter(p => p && p.id && typeof p.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.date));
   // antojos (desde la 0.5): cuándo, qué, cómo estabas y cómo acabó
   if (!Array.isArray(s.cravings)) s.cravings = [];
   s.cravings = s.cravings.filter(c => c && c.id && typeof c.date === 'string' && Number.isFinite(c.hour));

@@ -131,6 +131,31 @@ export async function autoBackup(text, { today, gesture = false, explicit = fals
   }
 }
 
+/* Las fotos, como .jpg en «trampantojo-fotos» dentro de la carpeta de la
+   copia. Sólo las que aún no estén; nunca se borra ninguna. */
+export async function writePhotos(photos, getBlob) {
+  if (!photos?.length || !canUseFolder()) return 0;
+  let h;
+  try { h = await getHandle(); } catch { return 0; }
+  if (!h || (await h.queryPermission({ mode: 'readwrite' })) !== 'granted') return 0;
+  let written = 0;
+  try {
+    const dir = await h.getDirectoryHandle('trampantojo-fotos', { create: true });
+    for (const p of photos) {
+      const name = `${p.date}-${p.id}.jpg`;
+      try { await dir.getFileHandle(name); continue; } catch { /* no está: se escribe */ }
+      const blob = await getBlob(p.id);
+      if (!blob) continue;
+      const fh = await dir.getFileHandle(name, { create: true });
+      const w = await fh.createWritable();
+      await w.write(blob);
+      await w.close();
+      written++;
+    }
+  } catch (err) { console.warn('[copia] fotos', err); }
+  return written;
+}
+
 // ¿Toca copia? (la última hace más de `hours` horas)
 export function due(hours = 12) {
   const last = ls.get(LAST);

@@ -18,20 +18,21 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.10.1';
-    import * as S from './js/store.js?v=0.10.1';
-    import { messageOfTheDay } from './js/messages.js?v=0.10.1';
-    import * as FO from './js/foods.js?v=0.10.1';
-    import * as AN from './js/antojo.js?v=0.10.1';
-    import * as ID from './js/ideas.js?v=0.10.1';
-    import * as LG from './js/logros.js?v=0.10.1';
-    import * as CQ from './js/calidad.js?v=0.10.1';
-    import * as EJ from './js/ejercicio.js?v=0.10.1';
-    import * as BD from './js/cuerpo.js?v=0.10.1';
-    import * as AG from './js/agua.js?v=0.10.1';
-    import * as CH from './js/charts.js?v=0.10.1';
-    import * as MN from './js/menu.js?v=0.10.1';
-    import * as CA from './js/calendario.js?v=0.10.1';
+    import * as C from './js/calc.js?v=0.11.0';
+    import * as S from './js/store.js?v=0.11.0';
+    import { messageOfTheDay } from './js/messages.js?v=0.11.0';
+    import * as FO from './js/foods.js?v=0.11.0';
+    import * as AN from './js/antojo.js?v=0.11.0';
+    import * as ID from './js/ideas.js?v=0.11.0';
+    import * as LG from './js/logros.js?v=0.11.0';
+    import * as CQ from './js/calidad.js?v=0.11.0';
+    import * as EJ from './js/ejercicio.js?v=0.11.0';
+    import * as BD from './js/cuerpo.js?v=0.11.0';
+    import * as AG from './js/agua.js?v=0.11.0';
+    import * as CH from './js/charts.js?v=0.11.0';
+    import * as MN from './js/menu.js?v=0.11.0';
+    import * as CA from './js/calendario.js?v=0.11.0';
+    import * as FT from './js/fotos.js?v=0.11.0';
     import * as WK from './worker/agua.js';
 
     const out = document.getElementById('out');
@@ -236,6 +237,19 @@
     check('mensaje: si ayer la mitad fue de las malas, propone cambiar una', /cambia una/i.test(msgBad.title) && /napolitana/.test(msgBad.text), msgBad.title);
     const wkQ = LG.weekSummary({ food: { [yday]: [{ src: 'tabla', ref: 'lentejas', kcal: 700 }, { src: 'tabla', ref: 'napolitana', kcal: 300 }] }, weights: [] }, [], '2026-09-23', 'h');
     check('semana: el porcentaje de calorías buenas', Math.abs(wkQ.cur.goodPct - 0.7) < 0.001 && wkQ.prev.goodPct === null, JSON.stringify(wkQ.cur.goodPct));
+
+    // las fotos
+    check('fotos: antes y ahora son la primera y la última', (() => { const pr = FT.defaultPair([{ id: 'b', date: '2026-09-10' }, { id: 'a', date: '2026-08-01' }, { id: 'c', date: '2026-09-20' }]); return pr[0].id === 'a' && pr[1].id === 'c'; })());
+    check('fotos: con una sola no hay comparación', FT.defaultPair([{ id: 'a', date: '2026-08-01' }]) === null);
+    check('fotos: el store limpia fichas rotas', (() => { const m = S.migrate({ photos: [{ id: 'x', date: '2026-09-01' }, { date: '2026-09-02' }, { id: 'y', date: 'mal' }] }); return m.photos.length === 1 && m.photos[0].id === 'x'; })());
+    try {
+      const cv = document.createElement('canvas'); cv.width = 2000; cv.height = 1500;
+      const cx = cv.getContext('2d'); cx.fillStyle = '#e0a020'; cx.fillRect(0, 0, 2000, 1500);
+      const png = await new Promise(r => cv.toBlob(r, 'image/png'));
+      const small = await FT.shrink(png, 1280);
+      const bm = await createImageBitmap(small);
+      check('fotos: se reducen a 1280 px en JPEG', small.type === 'image/jpeg' && bm.width === 1280 && bm.height === 960, `${bm.width}×${bm.height} ${small.type}`);
+    } catch (err) { check('fotos: se reducen a 1280 px en JPEG', false, err.message); }
 
     // el calendario de hábitos
     const g9 = CA.monthGrid(2026, 8);

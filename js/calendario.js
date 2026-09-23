@@ -7,7 +7,7 @@
    buen día es el de tres o más). Se calcula de tus datos: no hay que marcar
    nada. */
 
-import { qualityMix } from './calidad.js?v=0.10.1';
+import { qualityMix } from './calidad.js?v=0.11.0';
 
 export const HABITS = [
   { id: 'peso', label: 'Te pesaste' },

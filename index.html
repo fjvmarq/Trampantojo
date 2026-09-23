@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/app.css?v=0.10.1">
+  <link rel="stylesheet" href="css/app.css?v=0.11.0">
 </head>
 <body>
   <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
@@ -183,6 +183,16 @@
           <p class="card-sub" id="waist-sub"></p>
           <div class="chart-box" id="chart-waist"></div>
           <p class="card-foot">La cintura es la mejor pista de la grasa visceral, la que se acumula entre los órganos y la que más riesgo tiene para la salud. Mídela a la altura del ombligo, de pie y sin apretar, siempre igual.</p>
+        </div>
+        <div class="card photos-card">
+          <p class="eyebrow">Tus fotos</p>
+          <p class="card-sub" id="photos-sub"></p>
+          <div class="photo-grid" id="photo-grid"></div>
+          <div class="menu-row">
+            <label class="btn primary small photo-add">+ Añadir foto<input type="file" id="photo-input" accept="image/*" hidden></label>
+            <button type="button" class="btn ghost small" id="photo-compare" hidden>Antes y ahora</button>
+          </div>
+          <p class="card-foot">Las fotos se quedan sólo en tu móvil. Para compararlas bien: misma luz, misma ropa, mismo sitio y la misma postura.</p>
         </div>
         <div class="card">
           <p class="eyebrow">Ritmo semana a semana</p>
@@ -518,6 +528,39 @@
   </dialog>
 
   <!-- ── Tengo un antojo ─────────────────────────────────────── -->
+  <dialog id="photo-dialog" class="sheet tall">
+    <div class="sheet-grabber" aria-hidden="true"></div>
+    <div class="sheet-bar">
+      <button type="button" class="bar-btn" id="photo-close">Cerrar</button>
+      <h2 id="photo-title">Foto</h2>
+      <button type="button" class="bar-btn danger-text" id="photo-delete">Borrar</button>
+    </div>
+    <img class="photo-full" id="photo-img" alt="">
+    <p class="card-foot center" id="photo-meta"></p>
+  </dialog>
+
+  <dialog id="compare-dialog" class="sheet tall">
+    <div class="sheet-grabber" aria-hidden="true"></div>
+    <div class="sheet-bar">
+      <button type="button" class="bar-btn" id="compare-close">Cerrar</button>
+      <h2>Antes y ahora</h2>
+      <span></span>
+    </div>
+    <div class="compare" id="compare-box">
+      <img id="cmp-after" alt="Ahora">
+      <img id="cmp-before" alt="Antes">
+      <div class="cmp-line" id="cmp-line"></div>
+      <span class="cmp-tag left" id="cmp-tag-before">Antes</span>
+      <span class="cmp-tag right" id="cmp-tag-after">Ahora</span>
+    </div>
+    <input type="range" class="cmp-range" id="cmp-range" min="0" max="100" value="50" aria-label="Deslizar entre antes y ahora">
+    <p class="card-sub center" id="cmp-meta"></p>
+    <p class="crv-q">Antes</p>
+    <div class="cmp-strip" id="cmp-strip-before"></div>
+    <p class="crv-q">Ahora</p>
+    <div class="cmp-strip" id="cmp-strip-after"></div>
+  </dialog>
+
   <dialog id="shop-dialog" class="sheet tall">
     <div class="sheet-grabber" aria-hidden="true"></div>
     <div class="sheet-bar">
@@ -704,6 +747,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.10.1"></script>
+  <script type="module" src="js/app.js?v=0.11.0"></script>
 </body>
 </html>

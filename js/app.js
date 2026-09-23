@@ -2,21 +2,22 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.10.1';
-import * as S from './store.js?v=0.10.1';
-import { weightChart, rateChart, kcalChart, measureChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.10.1';
-import { initComidas } from './comidas.js?v=0.10.1';
-import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.10.1';
-import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.10.1';
-import { messageOfTheDay } from './messages.js?v=0.10.1';
-import { startAmbient } from './ambient.js?v=0.10.1';
-import { qualityMix } from './calidad.js?v=0.10.1';
-import * as CP from './copia.js?v=0.10.1';
-import { HABITS, dayHabits, score as habitScore, monthGrid, monthSummary } from './calendario.js?v=0.10.1';
-import * as AG from './agua.js?v=0.10.1';
-import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.10.1';
+import * as C from './calc.js?v=0.11.0';
+import * as S from './store.js?v=0.11.0';
+import { weightChart, rateChart, kcalChart, measureChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.11.0';
+import { initComidas } from './comidas.js?v=0.11.0';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.11.0';
+import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.11.0';
+import { messageOfTheDay } from './messages.js?v=0.11.0';
+import { startAmbient } from './ambient.js?v=0.11.0';
+import { qualityMix } from './calidad.js?v=0.11.0';
+import * as CP from './copia.js?v=0.11.0';
+import { HABITS, dayHabits, score as habitScore, monthGrid, monthSummary } from './calendario.js?v=0.11.0';
+import * as FT from './fotos.js?v=0.11.0';
+import * as AG from './agua.js?v=0.11.0';
+import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.11.0';
 
-const VERSION = '0.10.1';
+const VERSION = '0.11.0';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -346,6 +347,7 @@ function renderEvo(s) {
   });
   renderGoals(s);
   renderWaist(s);
+  renderPhotos(s);
   rateChart($('#chart-rate'), s.weekly);
   renderWeek(s);
   renderCalendar(s);
@@ -757,6 +759,153 @@ $('#cal-next').addEventListener('click', () => {
   calMonth = calMonth.m === 11 ? { y: calMonth.y + 1, m: 0 } : { y: calMonth.y, m: calMonth.m + 1 };
   render();
 });
+
+/* ── las fotos de progreso ──────────────────────────────────────────── */
+
+const photoUrls = new Map();       // id → URL de la miniatura (se liberan al repintar)
+
+function kgOn(date) {
+  const w = (state.weights || []).find(x => x.date === date);
+  if (w) return w.kg;
+  const s = C.summarize(state, today());
+  return s.daily?.find(d => d.date === date)?.trend ?? null;
+}
+
+async function thumbUrl(id) {
+  if (photoUrls.has(id)) return photoUrls.get(id);
+  const blob = await FT.getThumb(id).catch(() => null);
+  const url = blob ? URL.createObjectURL(blob) : null;
+  photoUrls.set(id, url);
+  return url;
+}
+
+function sortedPhotos() {
+  return [...(state.photos || [])].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+}
+
+async function renderPhotos(s) {
+  const grid = $('#photo-grid');
+  const list = sortedPhotos();
+  $('#photo-compare').hidden = list.length < 2;
+  const pair = FT.defaultPair(list);
+  $('#photos-sub').textContent = !list.length
+    ? 'La báscula dice cuánto; la foto dice cómo. Hazte una hoy y otra dentro de unas semanas: cuando el peso se atasca, las fotos suelen enseñar lo que el número no.'
+    : pair ? `${list.length} fotos, desde el ${shortDate(pair[0].date)}.${pair[0].kg && pair[1].kg ? ` Entre la primera y la última: ${signed1(pair[1].kg - pair[0].kg)} kg.` : ''}`
+      : 'Tu primera foto. Con la siguiente podrás compararlas con la cortinilla de «Antes y ahora».';
+  grid.replaceChildren();
+  for (const p of list) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'photo-thumb';
+    b.setAttribute('aria-label', `Foto del ${longDate(p.date)}`);
+    const img = document.createElement('img');
+    img.alt = '';
+    img.loading = 'lazy';
+    const cap = document.createElement('span');
+    cap.className = 'photo-cap';
+    cap.textContent = `${shortDate(p.date)}${p.kg ? ` · ${kg1(p.kg)}` : ''}`;
+    b.append(img, cap);
+    b.addEventListener('click', () => openPhoto(p));
+    grid.appendChild(b);
+    thumbUrl(p.id).then(url => {
+      if (url) img.src = url;
+      else { b.classList.add('missing'); cap.textContent = `${shortDate(p.date)} · no está en este móvil`; }
+    });
+  }
+}
+
+$('#photo-input').addEventListener('change', async e => {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const d = today();
+    const p = await FT.addPhoto(file, d, kgOn(d));
+    state.photos = [...(state.photos || []), p];
+    if (persist('Foto guardada. Se queda sólo en tu móvil.')) { render(); scheduleBackup(); }
+  } catch (err) {
+    toast('No he podido guardar esa foto. Prueba con otra.', true);
+  }
+});
+
+const phdlg = $('#photo-dialog');
+let photoOpen = null;
+let fullUrl = null;
+
+async function openPhoto(p) {
+  photoOpen = p;
+  $('#photo-title').textContent = shortDate(p.date);
+  $('#photo-meta').textContent = `${longDate(p.date)}${p.kg ? ` · ${kg1(p.kg)} kg` : ''}`;
+  if (fullUrl) URL.revokeObjectURL(fullUrl);
+  const blob = await FT.getPhoto(p.id).catch(() => null);
+  fullUrl = blob ? URL.createObjectURL(blob) : null;
+  $('#photo-img').src = fullUrl || '';
+  $('#photo-img').hidden = !fullUrl;
+  if (!fullUrl) $('#photo-meta').textContent += '. La imagen no está en este móvil (quizá vino de una copia).';
+  phdlg.showModal();
+}
+$('#photo-close').addEventListener('click', () => phdlg.close());
+phdlg.addEventListener('click', e => { if (e.target === phdlg) phdlg.close(); });
+$('#photo-delete').addEventListener('click', async () => {
+  if (!photoOpen || !confirm('¿Borrar esta foto? No se puede deshacer (si está en la carpeta de la copia, allí sigue).')) return;
+  await FT.deletePhoto(photoOpen.id).catch(() => {});
+  const url = photoUrls.get(photoOpen.id);
+  if (url) URL.revokeObjectURL(url);
+  photoUrls.delete(photoOpen.id);
+  state.photos = (state.photos || []).filter(x => x.id !== photoOpen.id);
+  phdlg.close();
+  if (persist('Foto borrada.')) render();
+});
+
+// antes y ahora, con una cortinilla
+const cmdlg = $('#compare-dialog');
+let cmpPair = null;
+const cmpUrls = [];
+
+async function setCompareImages() {
+  cmpUrls.splice(0).forEach(u => URL.revokeObjectURL(u));
+  const [before, after] = cmpPair;
+  const [bb, ab] = await Promise.all([FT.getPhoto(before.id).catch(() => null), FT.getPhoto(after.id).catch(() => null)]);
+  const bu = bb ? URL.createObjectURL(bb) : '', au = ab ? URL.createObjectURL(ab) : '';
+  cmpUrls.push(bu, au);
+  $('#cmp-before').src = bu;
+  $('#cmp-after').src = au;
+  $('#cmp-tag-before').textContent = shortDate(before.date);
+  $('#cmp-tag-after').textContent = shortDate(after.date);
+  const days = C.daysBetween(before.date, after.date);
+  $('#cmp-meta').textContent = `${days} días entre una y otra${before.kg && after.kg ? ` · ${signed1(after.kg - before.kg)} kg` : ''}. Desliza para ver el cambio.`;
+  const strip = (box, which) => {
+    box.replaceChildren();
+    sortedPhotos().slice().reverse().forEach(p => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cmp-pick';
+      b.setAttribute('aria-pressed', String(cmpPair[which].id === p.id));
+      b.textContent = shortDate(p.date);
+      b.addEventListener('click', () => { cmpPair[which] = p; setCompareImages(); });
+      box.appendChild(b);
+    });
+  };
+  strip($('#cmp-strip-before'), 0);
+  strip($('#cmp-strip-after'), 1);
+}
+
+function setCurtain(v) {
+  $('#cmp-before').style.clipPath = `inset(0 ${100 - v}% 0 0)`;
+  $('#cmp-line').style.left = `${v}%`;
+}
+
+$('#photo-compare').addEventListener('click', async () => {
+  cmpPair = FT.defaultPair(state.photos);
+  if (!cmpPair) return;
+  $('#cmp-range').value = '50';
+  setCurtain(50);
+  await setCompareImages();
+  cmdlg.showModal();
+});
+$('#cmp-range').addEventListener('input', e => setCurtain(Number(e.target.value)));
+$('#compare-close').addEventListener('click', () => cmdlg.close());
+cmdlg.addEventListener('click', e => { if (e.target === cmdlg) cmdlg.close(); });
 
 /* ── la cintura ─────────────────────────────────────────────────────── */
 
@@ -1472,6 +1621,7 @@ async function runBackup({ gesture = false, explicit = false } = {}) {
   if (!S.canSave()) return null;          // tras una carga ilegible no se copia nada
   const hasData = !!state.profile && (state.weights.length > 0 || Object.keys(state.food || {}).length > 0);
   backupResult = await CP.autoBackup(S.exportText(state), { today: today(), gesture, explicit, hasData });
+  if (backupResult?.ok && state.photos?.length) CP.writePhotos(state.photos, FT.getPhoto);
   renderBackupUi();
   return backupResult;
 }
