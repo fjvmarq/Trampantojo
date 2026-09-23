@@ -2,22 +2,22 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.11.0';
-import * as S from './store.js?v=0.11.0';
-import { weightChart, rateChart, kcalChart, measureChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.11.0';
-import { initComidas } from './comidas.js?v=0.11.0';
-import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.11.0';
-import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.11.0';
-import { messageOfTheDay } from './messages.js?v=0.11.0';
-import { startAmbient } from './ambient.js?v=0.11.0';
-import { qualityMix } from './calidad.js?v=0.11.0';
-import * as CP from './copia.js?v=0.11.0';
-import { HABITS, dayHabits, score as habitScore, monthGrid, monthSummary } from './calendario.js?v=0.11.0';
-import * as FT from './fotos.js?v=0.11.0';
-import * as AG from './agua.js?v=0.11.0';
-import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.11.0';
+import * as C from './calc.js?v=0.11.1';
+import * as S from './store.js?v=0.11.1';
+import { weightChart, rateChart, kcalChart, measureChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.11.1';
+import { initComidas } from './comidas.js?v=0.11.1';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.11.1';
+import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.11.1';
+import { messageOfTheDay } from './messages.js?v=0.11.1';
+import { startAmbient } from './ambient.js?v=0.11.1';
+import { qualityMix } from './calidad.js?v=0.11.1';
+import * as CP from './copia.js?v=0.11.1';
+import { HABITS, dayHabits, score as habitScore, monthGrid, monthSummary } from './calendario.js?v=0.11.1';
+import * as FT from './fotos.js?v=0.11.1';
+import * as AG from './agua.js?v=0.11.1';
+import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.11.1';
 
-const VERSION = '0.11.0';
+const VERSION = '0.11.1';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];

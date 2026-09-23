@@ -8,11 +8,11 @@
    Cada apunte guarda sus calorías y nutrientes CALCULADOS en el momento: si la
    tabla cambia en una versión futura, lo que comiste ayer no cambia. */
 
-import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.11.0';
-import { kg1 } from './charts.js?v=0.11.0';
-import { suggest } from './ideas.js?v=0.11.0';
-import { foodQuality, entryQuality, productQuality, qualityMix, tagLine, TYPES, QLABEL, QSHORT } from './calidad.js?v=0.11.0';
-import { SLOTS, buildMenu, pickFor, mealNutrients, dayTotal, factorText, shoppingList, shoppingText } from './menu.js?v=0.11.0';
+import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.11.1';
+import { kg1 } from './charts.js?v=0.11.1';
+import { suggest, HOW } from './ideas.js?v=0.11.1';
+import { foodQuality, entryQuality, productQuality, qualityMix, tagLine, TYPES, QLABEL, QSHORT } from './calidad.js?v=0.11.1';
+import { SLOTS, buildMenu, pickFor, mealNutrients, dayTotal, factorText, shoppingList, shoppingText } from './menu.js?v=0.11.1';
 
 export const MEALS = [
   { id: 'desayuno', label: 'Desayuno' },
@@ -671,7 +671,18 @@ export function initComidas(ctx) {
         if (persist()) renderMenu(s);
       });
       acts.appendChild(sw);
-      li.append(head, name, meta, acts);
+      li.append(head, name, meta);
+      const steps = HOW[n.idea.id];
+      if (steps?.length) {
+        const how = document.createElement('details'); how.className = 'menu-how';
+        const sm = document.createElement('summary'); sm.textContent = 'Cómo se hace';
+        const ol = document.createElement('ol');
+        steps.forEach(t => { const x = document.createElement('li'); x.textContent = t; ol.appendChild(x); });
+        if (n.f > 1) { const x = document.createElement('li'); x.className = 'menu-how-note'; x.textContent = `Hoy toca ${factorText(n.f)}: multiplica las cantidades por ${String(n.f).replace('.', ',')}.`; ol.appendChild(x); }
+        how.append(sm, ol);
+        li.appendChild(how);
+      }
+      li.appendChild(acts);
       ul.appendChild(li);
     });
     card.appendChild(ul);

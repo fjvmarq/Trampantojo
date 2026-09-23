@@ -18,21 +18,21 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.11.0';
-    import * as S from './js/store.js?v=0.11.0';
-    import { messageOfTheDay } from './js/messages.js?v=0.11.0';
-    import * as FO from './js/foods.js?v=0.11.0';
-    import * as AN from './js/antojo.js?v=0.11.0';
-    import * as ID from './js/ideas.js?v=0.11.0';
-    import * as LG from './js/logros.js?v=0.11.0';
-    import * as CQ from './js/calidad.js?v=0.11.0';
-    import * as EJ from './js/ejercicio.js?v=0.11.0';
-    import * as BD from './js/cuerpo.js?v=0.11.0';
-    import * as AG from './js/agua.js?v=0.11.0';
-    import * as CH from './js/charts.js?v=0.11.0';
-    import * as MN from './js/menu.js?v=0.11.0';
-    import * as CA from './js/calendario.js?v=0.11.0';
-    import * as FT from './js/fotos.js?v=0.11.0';
+    import * as C from './js/calc.js?v=0.11.1';
+    import * as S from './js/store.js?v=0.11.1';
+    import { messageOfTheDay } from './js/messages.js?v=0.11.1';
+    import * as FO from './js/foods.js?v=0.11.1';
+    import * as AN from './js/antojo.js?v=0.11.1';
+    import * as ID from './js/ideas.js?v=0.11.1';
+    import * as LG from './js/logros.js?v=0.11.1';
+    import * as CQ from './js/calidad.js?v=0.11.1';
+    import * as EJ from './js/ejercicio.js?v=0.11.1';
+    import * as BD from './js/cuerpo.js?v=0.11.1';
+    import * as AG from './js/agua.js?v=0.11.1';
+    import * as CH from './js/charts.js?v=0.11.1';
+    import * as MN from './js/menu.js?v=0.11.1';
+    import * as CA from './js/calendario.js?v=0.11.1';
+    import * as FT from './js/fotos.js?v=0.11.1';
     import * as WK from './worker/agua.js';
 
     const out = document.getElementById('out');
@@ -265,6 +265,8 @@
     check('calendario: un antojo perdido no cuenta como vencido', !h11.antojo && CA.score(h11) === 0);
     const ms = CA.monthSummary(calState, 2026, 8, 8, '2026-09-23');
     check('calendario: el resumen del mes', ms.days === 23 && ms.good === 1 && ms.counts.peso === 1);
+
+    check('recetas: cada plato del menú sabe cómo se hace', ID.IDEAS.every(i => ID.HOW[i.id]?.length >= 1) && Object.keys(ID.HOW).every(k => ID.IDEAS.some(i => i.id === k)), ID.IDEAS.filter(i => !ID.HOW[i.id]).map(i => i.id).join(', '));
 
     // el menú de la semana
     for (const kc of [1600, 1900, 2300]) {

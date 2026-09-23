@@ -11,8 +11,8 @@
    cantidades de tienda (el arroz, en crudo; la tortilla, en huevos) y
    ordenados por pasillos. */
 
-import { IDEAS, ideaNutrients } from './ideas.js?v=0.11.0';
-import { FOODS_BY_ID, norm } from './foods.js?v=0.11.0';
+import { IDEAS, ideaNutrients } from './ideas.js?v=0.11.1';
+import { FOODS_BY_ID, norm } from './foods.js?v=0.11.1';
 
 // las cinco tomas, qué tipo de plato va en cada una y qué parte del día se lleva
 export const SLOTS = [
