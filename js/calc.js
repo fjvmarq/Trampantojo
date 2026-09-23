@@ -317,6 +317,40 @@ export function milestoneStatus(m, s) {
   return { status: projected <= m.kg + 0.05 ? 'en-camino' : 'detras', days, left, needed, projected };
 }
 
+/* ── tu gasto REAL, medido ─────────────────────────────────────────────
+   Si en 28 días comiste de media 2.100 kcal y tu tendencia bajó 1 kg, tu
+   cuerpo gastó 2.100 + 7.700/28 ≈ 2.375 kcal al día. Es tu gasto de verdad,
+   y corrige a la vez la fórmula y los errores de la tabla de alimentos.
+   Sólo cuentan los días apuntados de verdad (≥ 800 kcal) y hacen falta 14. */
+export const MEASURE_WINDOW = 28;
+export const MEASURE_MIN_DAYS = 14;
+export const LOGGED_MIN_KCAL = 800;
+
+export function dayKcal(food, date) {
+  return (food?.[date] || []).reduce((a, e) => a + (e.kcal || 0), 0);
+}
+
+export function measuredTdee(food, daily, today) {
+  if (!food || !daily?.length) return null;
+  const first = daily[0].date, last = daily[daily.length - 1].date;
+  const end = last < today ? last : today;
+  let start = addDays(end, -(MEASURE_WINDOW - 1));
+  if (start < first) start = first;
+  const days = daysBetween(start, end) + 1;
+  if (days < MEASURE_MIN_DAYS) return null;
+  const logged = [];
+  for (let i = 0; i < days; i++) {
+    const k = dayKcal(food, addDays(start, i));
+    if (k >= LOGGED_MIN_KCAL) logged.push(k);
+  }
+  if (logged.length < MEASURE_MIN_DAYS) return null;
+  const byDate = new Map(daily.map(x => [x.date, x.trend]));
+  const tStart = byDate.get(start), tEnd = byDate.get(end);
+  if (tStart == null || tEnd == null) return null;
+  const avg = logged.reduce((a, b) => a + b, 0) / logged.length;
+  return { tdee: avg + (tStart - tEnd) * KCAL_PER_KG / days, avgIntake: avg, days, logged: logged.length, change: tEnd - tStart };
+}
+
 /* ── el resumen que pinta la pantalla ───────────────────────────────── */
 
 export function summarize(state, today = todayISO()) {
@@ -351,6 +385,10 @@ export function summarize(state, today = todayISO()) {
   const b = bmr({ sex: profile.sex, kg: s.trendKg, cm: profile.heightCm, age: s.age });
   s.bmr = b;
   s.tdee = tdee(b, profile.activity);
+  s.tdeeFormula = s.tdee;
+  s.measured = measuredTdee(state.food, daily, today);
+  if (profile.useMeasured && s.measured) s.tdee = s.measured.tdee;
+  s.kcalToday = dayKcal(state.food, today);
   s.maintain = s.trendKg - profile.goalKg <= 0.25;
   // el plan manda sobre el ritmo: con fecha de meta, el ritmo sale de la fecha
   s.plan = profile.plan || { startDate: entries[0].date, startKg: entries[0].kg };

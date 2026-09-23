@@ -1,0 +1,553 @@
+/* Trampantojo — la pantalla de Comidas.
+
+   Apuntar tiene que costar segundos: por eso lo primero son tus recientes y tus
+   platos, la búsqueda entiende frases («2 huevos y una tostada») y cada
+   alimento trae sus raciones caseras. Lo envasado, por su código de barras
+   (Open Food Facts, gratis; sólo sale del móvil el número del código).
+
+   Cada apunte guarda sus calorías y nutrientes CALCULADOS en el momento: si la
+   tabla cambia en una versión futura, lo que comiste ayer no cambia. */
+
+import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.4.6';
+import { kg1 } from './charts.js?v=0.4.6';
+
+export const MEALS = [
+  { id: 'desayuno', label: 'Desayuno' },
+  { id: 'media', label: 'Media mañana' },
+  { id: 'comida', label: 'Comida' },
+  { id: 'merienda', label: 'Merienda' },
+  { id: 'cena', label: 'Cena' },
+  { id: 'picoteo', label: 'Picoteo' },
+];
+
+export function mealForNow(d = new Date()) {
+  const h = d.getHours() + d.getMinutes() / 60;
+  if (h < 11) return 'desayuno';
+  if (h < 13) return 'media';
+  if (h < 16.5) return 'comida';
+  if (h < 19.5) return 'merienda';
+  if (h < 23) return 'cena';
+  return 'picoteo';
+}
+
+const $ = (sel, root = document) => root.querySelector(sel);
+let intFmt;
+try { intFmt = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0, useGrouping: 'always' }); }
+catch { intFmt = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }); }
+const int = v => intFmt.format(Math.round(v));
+const round10 = v => Math.round(v / 10) * 10;   // el objetivo, como en Hoy
+const qtyFmt = v => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(v);
+const newId = p => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+// Lo que suma un día: kcal, proteína, hidratos y grasa.
+export function dayTotals(entries = []) {
+  return entries.reduce((t, e) => ({ kcal: t.kcal + e.kcal, p: t.p + e.p, c: t.c + e.c, f: t.f + e.f }), { kcal: 0, p: 0, c: 0, f: 0 });
+}
+
+// El plural de una ración: rebanada → rebanadas, unidad → unidades, ración → raciones.
+export function plural(w) {
+  if (w.includes(' ') || /s$/.test(w)) return w;
+  if (/[aeiouáéíóú]$/.test(w)) return w + 's';
+  if (/z$/.test(w)) return w.slice(0, -1) + 'ces';
+  if (/ón$/.test(w)) return w.slice(0, -2) + 'ones';
+  return w + 'es';
+}
+
+// «2 rebanadas», «1 plato», «½ ración», «150 g»
+export function portionText(e) {
+  if (e.unit === 'g') return `${int(e.grams)} g`;
+  if (e.unit === 'kcal') return 'a mano';
+  if (e.qty === 0.5) return `media ${e.unit}`.replace(/^media (plato|vaso|bol|trozo|filete|tercio|taco|puñado|pincho|chupito|racimo|brick|medio|sobre|panecillo)/, 'medio $1');
+  const q = e.qty === 1 ? '1' : qtyFmt(e.qty);
+  return `${q} ${e.qty > 1 ? plural(e.unit) : e.unit}`;
+}
+
+export function initComidas(ctx) {
+  const { getState, persist, toast, today, render } = ctx;
+  let day = null;            // el día que se está viendo (null = hoy)
+  let targetMeal = 'desayuno';
+  let editing = null;        // { date, id } cuando se corrige un apunte
+  let chosen = null;         // { item, unit, qty } en la vista de ración
+  let scanStream = null, scanTimer = null;
+
+  const dlg = $('#food-dialog');
+  const views = ['search', 'portion', 'scan', 'manual'];
+  const showView = v => views.forEach(n => { $(`#food-${n}-view`).hidden = n !== v; });
+
+  const viewDay = () => day || today();
+
+  /* ── lo tuyo primero: platos, productos escaneados y recientes ──── */
+
+  function extras() {
+    const st = getState();
+    const dishes = (st.dishes || []).map(d => ({ id: d.id, n: d.name, a: [], k: d.k, p: d.p, c: d.c, f: d.f, u: [['ración', d.grams || 100]], src: 'plato' }));
+    const products = Object.values(st.products || {}).map(pr => ({ id: pr.code, n: pr.name, a: pr.brand ? [pr.brand] : [], k: pr.k, p: pr.p, c: pr.c, f: pr.f, u: pr.u, src: 'producto' }));
+    return [...dishes, ...products];
+  }
+
+  function itemFromRef(src, ref) {
+    const st = getState();
+    if (src === 'tabla') { const f = FOODS_BY_ID.get(ref); return f ? { ...f, src } : null; }
+    if (src === 'plato') { const d = (st.dishes || []).find(x => x.id === ref); return d ? { id: d.id, n: d.name, a: [], k: d.k, p: d.p, c: d.c, f: d.f, u: [['ración', d.grams || 100]], src } : null; }
+    if (src === 'producto') { const pr = st.products?.[ref]; return pr ? { id: pr.code, n: pr.name, a: [], k: pr.k, p: pr.p, c: pr.c, f: pr.f, u: pr.u, src } : null; }
+    return null;
+  }
+
+  function recentItems() {
+    const st = getState();
+    return (st.recentFoods || []).map(r => {
+      const item = itemFromRef(r.src, r.ref);
+      return item ? { item, unit: r.unit, qty: r.qty } : null;
+    }).filter(Boolean).slice(0, 12);
+  }
+
+  function remember(item, unit, qty) {
+    const st = getState();
+    const list = (st.recentFoods || []).filter(r => !(r.src === item.src && r.ref === item.id));
+    list.unshift({ src: item.src, ref: item.id, unit, qty });
+    st.recentFoods = list.slice(0, 30);
+  }
+
+  /* ── apuntar ─────────────────────────────────────────────────────── */
+
+  function entryFor(item, unit, qty) {
+    const u = (item.u || []).find(([n]) => n === unit);
+    const grams = unit === 'g' ? qty : (u ? u[1] : 100) * qty;
+    const n = nutrientsFor(item, grams);
+    return {
+      name: item.n, unit, qty: unit === 'g' ? 1 : qty, grams,
+      kcal: Math.round(n.kcal), p: Math.round(n.p * 10) / 10, c: Math.round(n.c * 10) / 10, f: Math.round(n.f * 10) / 10,
+      src: item.src || 'tabla', ref: item.id,
+    };
+  }
+
+  function addEntries(list, msg) {
+    const st = getState();
+    const date = viewDay();
+    st.food = st.food || {};
+    const arr = st.food[date] || (st.food[date] = []);
+    list.forEach(e => arr.push({ id: newId('c'), meal: targetMeal, t: Date.now(), ...e }));
+    if (persist(msg)) { dlg.close(); render(); }
+  }
+
+  /* ── la hoja: buscar ─────────────────────────────────────────────── */
+
+  function openAdd(meal) {
+    targetMeal = meal;
+    editing = null;
+    $('#food-title').textContent = `Añadir a ${MEALS.find(m => m.id === meal).label.toLowerCase()}`;
+    $('#food-q').value = '';
+    showView('search');
+    renderResults();
+    dlg.showModal();
+    setTimeout(() => $('#food-q').focus(), 60);
+  }
+
+  function resultRow(label, sub, kcalText, onClick) {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'log-row';
+    const main = document.createElement('span'); main.className = 'log-main';
+    const t = document.createElement('span'); t.className = 'log-date'; t.textContent = label;
+    main.appendChild(t);
+    if (sub) { const s = document.createElement('span'); s.className = 'log-sub'; s.textContent = sub; main.appendChild(s); }
+    const side = document.createElement('span'); side.className = 'log-side';
+    const k = document.createElement('span'); k.className = 'log-change'; k.textContent = kcalText;
+    side.appendChild(k);
+    const chev = document.createElement('span'); chev.className = 'chev'; chev.setAttribute('aria-hidden', 'true');
+    b.append(main, side, chev);
+    b.addEventListener('click', onClick);
+    li.appendChild(b);
+    return li;
+  }
+
+  const srcLabel = { plato: 'tu plato', producto: 'escaneado', tabla: '' };
+
+  function renderResults() {
+    const q = $('#food-q').value.trim();
+    const list = $('#food-results');
+    const label = $('#food-list-label');
+    const phrase = $('#food-phrase');
+    list.replaceChildren();
+    phrase.hidden = true;
+
+    if (!q) {
+      const rec = recentItems();
+      label.textContent = rec.length ? 'Recientes' : 'Ideas';
+      const items = rec.length ? rec : ['cafe-leche', 'pan-blanco', 'aceite', 'yogur-natural', 'platano', 'pollo-plancha', 'ensalada-verde', 'arroz-cocido']
+        .map(id => ({ item: { ...FOODS_BY_ID.get(id), src: 'tabla' }, unit: FOODS_BY_ID.get(id).u[0][0], qty: 1 }));
+      items.forEach(({ item, unit, qty }) => {
+        const e = entryFor(item, unit, qty);
+        list.appendChild(resultRow(item.n, `${portionText(e)}${srcLabel[item.src] ? ' · ' + srcLabel[item.src] : ''}`, `${int(e.kcal)} kcal`, () => openPortion(item, unit, qty)));
+      });
+      return;
+    }
+
+    // ¿es una frase con varias cosas o con cantidades?
+    const parsed = parsePhrase(q, extras());
+    const looksLikePhrase = parsed.parts.length > 1 || /^\s*(\d|un |una |dos |tres |medio |media )/i.test(q);
+    if (looksLikePhrase && parsed.understood) {
+      const entries = parsed.items.filter(Boolean).map(x => entryFor(x.item, x.unit, x.qty));
+      const total = entries.reduce((a, e) => a + e.kcal, 0);
+      phrase.replaceChildren();
+      const title = document.createElement('p'); title.className = 'eyebrow'; title.textContent = 'He entendido';
+      phrase.appendChild(title);
+      parsed.items.forEach((x, i) => {
+        const p = document.createElement('p');
+        p.className = 'phrase-line';
+        if (x) {
+          const e = entryFor(x.item, x.unit, x.qty);
+          p.textContent = `${portionText(e)} de ${x.item.n.toLowerCase()} · ${int(e.kcal)} kcal`;
+        } else {
+          p.classList.add('miss');
+          p.textContent = `«${parsed.parts[i]}»: no lo encuentro, búscalo aparte`;
+        }
+        phrase.appendChild(p);
+      });
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn primary block';
+      b.textContent = `Añadir todo · ${int(total)} kcal`;
+      b.addEventListener('click', () => {
+        parsed.items.filter(Boolean).forEach(x => remember(x.item, x.unit, x.qty));
+        addEntries(entries, `Añadido: ${int(total)} kcal`);
+      });
+      phrase.appendChild(b);
+      phrase.hidden = false;
+    }
+
+    // los resultados, para lo último que se ha escrito (o lo que no se entendió)
+    const missIdx = parsed.items.findIndex(x => !x);
+    const focus = missIdx >= 0 ? parsed.parts[missIdx] : parsed.parts[parsed.parts.length - 1] || q;
+    const found = searchFoods(stripQty(focus), extras(), 25);
+    label.textContent = found.length ? 'Resultados' : 'Nada con ese nombre';
+    found.forEach(item => {
+      const unit = item.u?.[0]?.[0] || 'g';
+      const e = entryFor(item, unit, unit === 'g' ? 100 : 1);
+      list.appendChild(resultRow(item.n, `${portionText(e)}${srcLabel[item.src] ? ' · ' + srcLabel[item.src] : ''} · ${int(item.k)} kcal/100 g`, `${int(e.kcal)} kcal`, () => openPortion(item, unit, 1)));
+    });
+    if (!found.length) {
+      list.appendChild(resultRow('Apuntarlo a mano', 'con sus calorías, si las sabes', '', () => openManual(q)));
+    }
+  }
+
+  /* ── la hoja: ración ─────────────────────────────────────────────── */
+
+  function openPortion(item, unit, qty, entry) {
+    chosen = { item, unit, qty };
+    showView('portion');
+    $('#portion-name').textContent = item.n;
+    $('#portion-per100').textContent = `${int(item.k)} kcal por 100 g · ${kg1(item.p)} g de proteína`;
+    const units = $('#portion-units');
+    units.replaceChildren();
+    [...(item.u || []), ['g', 1]].forEach(([n, g]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn ghost small';
+      b.textContent = n === 'g' ? 'en gramos' : /\d\s*g$/.test(n) ? n : `${n} (${int(g)} g)`;
+      b.setAttribute('aria-pressed', String(n === unit));
+      b.addEventListener('click', () => {
+        const grams = chosen.unit === 'g' ? chosen.qty : ((item.u || []).find(([x]) => x === chosen.unit)?.[1] || 100) * chosen.qty;
+        chosen.unit = n;
+        chosen.qty = n === 'g' ? Math.round(grams) : 1;
+        [...units.children].forEach(c => c.setAttribute('aria-pressed', String(c === b)));
+        updatePortion();
+      });
+      units.appendChild(b);
+    });
+    $('#portion-add').textContent = entry ? 'Guardar' : 'Añadir';
+    $('#portion-delete').hidden = !entry;
+    updatePortion();
+  }
+
+  function updatePortion() {
+    const { item, unit, qty } = chosen;
+    $('#portion-qty').value = qtyFmt(qty);
+    $('#portion-qty-label').textContent = unit === 'g' ? 'Gramos' : 'Cantidad';
+    const e = entryFor(item, unit, qty);
+    $('#portion-grams').textContent = unit === 'g' ? '' : `${int(e.grams)} g`;
+    $('#portion-result').textContent = `${int(e.kcal)} kcal`;
+    $('#portion-macros').textContent = `${kg1(e.p)} g proteína · ${kg1(e.c)} g hidratos · ${kg1(e.f)} g grasa`;
+  }
+
+  function stepQty(dir) {
+    const { unit } = chosen;
+    const step = unit === 'g' ? (chosen.qty >= 100 ? 25 : 10) : 0.5;
+    chosen.qty = Math.max(unit === 'g' ? 5 : 0.5, Math.round((chosen.qty + dir * step) * 100) / 100);
+    updatePortion();
+  }
+
+  $('#portion-minus').addEventListener('click', () => stepQty(-1));
+  $('#portion-plus').addEventListener('click', () => stepQty(1));
+  $('#portion-qty').addEventListener('input', e => {
+    const v = Number(String(e.target.value).replace(',', '.'));
+    if (v > 0) { chosen.qty = v; const x = entryFor(chosen.item, chosen.unit, v); $('#portion-result').textContent = `${int(x.kcal)} kcal`; $('#portion-grams').textContent = chosen.unit === 'g' ? '' : `${int(x.grams)} g`; }
+  });
+
+  $('#portion-add').addEventListener('click', () => {
+    const { item, unit, qty } = chosen;
+    const e = entryFor(item, unit, qty);
+    remember(item, unit, qty);
+    if (editing) {
+      const st = getState();
+      const arr = st.food[editing.date] || [];
+      const i = arr.findIndex(x => x.id === editing.id);
+      if (i >= 0) arr[i] = { ...arr[i], ...e };
+      if (persist('Guardado.')) { dlg.close(); render(); }
+      return;
+    }
+    addEntries([e], `${item.n}: ${int(e.kcal)} kcal`);
+  });
+
+  $('#portion-delete').addEventListener('click', () => {
+    if (!editing) return;
+    const st = getState();
+    st.food[editing.date] = (st.food[editing.date] || []).filter(x => x.id !== editing.id);
+    if (!st.food[editing.date].length) delete st.food[editing.date];
+    if (persist('Quitado.')) { dlg.close(); render(); }
+  });
+
+  $('#portion-back').addEventListener('click', () => { if (editing) dlg.close(); else { showView('search'); renderResults(); } });
+
+  /* ── la hoja: a mano ─────────────────────────────────────────────── */
+
+  function openManual(name = '') {
+    showView('manual');
+    const f = $('#manual-form');
+    f.reset();
+    f.elements.name.value = name;
+    setTimeout(() => f.elements.kcal.focus(), 60);
+  }
+  $('#food-manual').addEventListener('click', () => openManual($('#food-q').value.trim()));
+  $('#manual-back').addEventListener('click', () => { showView('search'); renderResults(); });
+  $('#manual-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const f = e.currentTarget;
+    const kcal = Number(String(f.elements.kcal.value).replace(',', '.'));
+    const p = Number(String(f.elements.p.value || '0').replace(',', '.'));
+    const name = f.elements.name.value.trim() || 'Sin nombre';
+    if (!(kcal > 0 && kcal < 5000)) { toast('Escribe las calorías, por ejemplo 350.', true); return; }
+    addEntries([{ name, unit: 'kcal', qty: 1, grams: 0, kcal: Math.round(kcal), p: p > 0 ? p : 0, c: 0, f: 0, src: 'manual', ref: null }], `${name}: ${int(kcal)} kcal`);
+  });
+
+  /* ── la hoja: código de barras ───────────────────────────────────── */
+
+  async function openScan() {
+    showView('scan');
+    $('#scan-code').value = '';
+    const status = $('#scan-status');
+    const video = $('#scan-video');
+    stopScan();
+    if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) {
+      video.hidden = true;
+      status.textContent = 'Este navegador no puede leer códigos con la cámara: escribe los números que hay debajo de las barras.';
+      return;
+    }
+    try {
+      const formats = await window.BarcodeDetector.getSupportedFormats();
+      const detector = new window.BarcodeDetector({ formats: formats.filter(f => /ean|upc/.test(f)) });
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      video.srcObject = scanStream;
+      video.hidden = false;
+      await video.play();
+      status.textContent = 'Apunta al código de barras del envase.';
+      scanTimer = setInterval(async () => {
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length) { const code = codes[0].rawValue; stopScan(); $('#scan-code').value = code; lookup(code); }
+        } catch { /* un fotograma sin código */ }
+      }, 300);
+    } catch (err) {
+      video.hidden = true;
+      status.textContent = 'No he podido abrir la cámara. Escribe los números del código.';
+    }
+  }
+
+  function stopScan() {
+    clearInterval(scanTimer); scanTimer = null;
+    if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  }
+
+  // «Galletas (Gullón)», pero no «Nutella (Nutella)»
+  function withBrand(name, brands) {
+    const b = (brands || '').split(',')[0].trim();
+    return b && !norm(name).includes(norm(b)) ? `${name} (${b})` : name;
+  }
+
+  async function lookup(code) {
+    code = String(code).replace(/\D/g, '');
+    const status = $('#scan-status');
+    if (code.length < 8) { status.textContent = 'El código tiene al menos 8 números.'; return; }
+    const st = getState();
+    const known = st.products?.[code];
+    if (known) { openPortion(itemFromRef('producto', code), known.u[0][0], 1); return; }
+    if (!navigator.onLine) { status.textContent = 'Sin conexión no puedo buscar el producto. Prueba luego, o apúntalo a mano.'; return; }
+    status.textContent = 'Buscando…';
+    try {
+      const fields = 'product_name,product_name_es,brands,nutriments,serving_quantity';
+      const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${fields}`);
+      const j = await res.json();
+      const p = j.product;
+      const n = p?.nutriments || {};
+      let k = n['energy-kcal_100g'];
+      if (k == null && n['energy_100g'] != null) k = n['energy_100g'] / 4.184;
+      if (!p || k == null) { status.textContent = 'No encuentro ese producto (o no trae calorías). Apúntalo a mano con lo que pone la etiqueta.'; return; }
+      const name = (p.product_name_es || p.product_name || 'Producto').trim();
+      const units = [['100 g', 100]];
+      if (Number(p.serving_quantity) > 0) units.unshift(['ración', Number(p.serving_quantity)]);
+      st.products = st.products || {};
+      st.products[code] = {
+        code, name: withBrand(name, p.brands), brand: p.brands || '',
+        k: Math.round(k), p: Number(n.proteins_100g) || 0, c: Number(n.carbohydrates_100g) || 0, f: Number(n.fat_100g) || 0, u: units,
+      };
+      persist();
+      openPortion(itemFromRef('producto', code), units[0][0], 1);
+    } catch {
+      status.textContent = 'No he podido consultar Open Food Facts. Revisa la conexión o apúntalo a mano.';
+    }
+  }
+
+  $('#food-scan').addEventListener('click', openScan);
+  $('#scan-lookup').addEventListener('click', () => lookup($('#scan-code').value));
+  $('#scan-back').addEventListener('click', () => { stopScan(); showView('search'); renderResults(); });
+
+  /* ── la hoja: abrir, cerrar ──────────────────────────────────────── */
+
+  $('#food-q').addEventListener('input', renderResults);
+  $('#food-cancel').addEventListener('click', () => dlg.close());
+  dlg.addEventListener('close', stopScan);
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+
+  /* ── mis platos ──────────────────────────────────────────────────── */
+
+  const ddlg = $('#dish-dialog');
+  let dishFrom = null;
+
+  function openSaveDish(meal) {
+    dishFrom = meal;
+    const f = $('#dish-form');
+    f.reset();
+    f.elements.servings.value = '1';
+    ddlg.showModal();
+    setTimeout(() => f.elements.name.focus(), 60);
+  }
+  $('#dish-cancel').addEventListener('click', () => ddlg.close());
+  $('#dish-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const f = e.currentTarget;
+    const name = f.elements.name.value.trim();
+    const servings = Number(String(f.elements.servings.value).replace(',', '.'));
+    if (!name) { toast('Ponle un nombre al plato.', true); return; }
+    if (!(servings > 0 && servings < 50)) { toast('¿Para cuántas raciones es? Un número, por ejemplo 1 o 4.', true); return; }
+    const st = getState();
+    const items = (st.food[viewDay()] || []).filter(x => x.meal === dishFrom);
+    const t = dayTotals(items);
+    const grams = items.reduce((a, x) => a + (x.grams || 0), 0) / servings;
+    const per = x => Math.round(x / servings * 10) / 10;
+    // por 100 g si sabemos los gramos; si no, «1 ración = 100 g» para que la tabla funcione igual
+    const g = grams > 0 ? grams : 100;
+    st.dishes = [...(st.dishes || []), {
+      id: newId('p'), name, grams: Math.round(g),
+      k: Math.round(t.kcal / servings / g * 100), p: per(t.p) / g * 100, c: per(t.c) / g * 100, f: per(t.f) / g * 100,
+    }];
+    if (persist(`«${name}» guardado: la próxima vez es un toque.`)) { ddlg.close(); render(); }
+  });
+
+  /* ── pintar la pantalla ──────────────────────────────────────────── */
+
+  function renderComidas(s) {
+    const st = getState();
+    const date = viewDay();
+    const isToday = date === today();
+    $('#day-label').textContent = isToday ? 'Hoy' : new Date(date + 'T12:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    $('#day-next').disabled = isToday;
+    const entries = st.food?.[date] || [];
+    const tot = dayTotals(entries);
+    const target = s.target?.kcal ? round10(s.target.kcal) : null;
+    $('#kcal-eaten').textContent = int(tot.kcal);
+    $('#intake-label').textContent = isToday ? 'Hoy llevas' : 'Ese día comiste';
+    const bar = $('#kcal-bar');
+    const pct = target ? Math.min(1.25, tot.kcal / target) : 0;
+    bar.style.width = `${Math.min(100, pct * 100)}%`;
+    bar.className = tot.kcal > (target || Infinity) * 1.05 ? 'over' : '';
+    $('#kcal-sub').textContent = !target ? ''
+      : tot.kcal <= target ? `de ${int(target)} kcal · te quedan ${int(target - tot.kcal)}`
+        : `de ${int(target)} kcal · ${int(tot.kcal - target)} de más`;
+    const pr = s.protein;
+    $('#macros').textContent = `${int(tot.p)} g de proteína${pr ? ` (lo tuyo: ${int(pr[0])}–${int(pr[1])} g)` : ''} · ${int(tot.c)} g hidratos · ${int(tot.f)} g grasa`;
+
+    const wrap = $('#meals');
+    wrap.replaceChildren();
+    MEALS.forEach(meal => {
+      const items = entries.filter(e => e.meal === meal.id);
+      const mt = dayTotals(items);
+      const label = document.createElement('p');
+      label.className = 'section-label';
+      label.textContent = items.length ? `${meal.label} · ${int(mt.kcal)} kcal` : meal.label;
+      const ul = document.createElement('ul');
+      ul.className = 'group log';
+      items.forEach(e => {
+        ul.appendChild(resultRow(e.name, portionText(e), `${int(e.kcal)} kcal`, () => openEdit(date, e)));
+      });
+      const add = resultRow(`Añadir a ${meal.label.toLowerCase()}`, null, '', () => openAdd(meal.id));
+      add.querySelector('.log-row').classList.add('add');
+      ul.appendChild(add);
+      if (items.length >= 2) {
+        const save = resultRow('Guardar como plato', 'para apuntarlo de un toque otro día', '', () => openSaveDish(meal.id));
+        save.querySelector('.log-row').classList.add('add');
+        ul.appendChild(save);
+      }
+      wrap.append(label, ul);
+    });
+
+    const dl = $('#dishes');
+    dl.replaceChildren();
+    const dishes = st.dishes || [];
+    $('#dishes-empty').hidden = dishes.length > 0;
+    dishes.forEach(d => {
+      dl.appendChild(resultRow(d.name, `1 ración · ${int(d.grams)} g`, `${int(d.k * d.grams / 100)} kcal`, () => {
+        if (!confirm(`¿Borrar el plato «${d.name}»? Lo que ya apuntaste con él no se toca.`)) return;
+        st.dishes = st.dishes.filter(x => x.id !== d.id);
+        st.recentFoods = (st.recentFoods || []).filter(r => !(r.src === 'plato' && r.ref === d.id));
+        if (persist('Plato borrado.')) render();
+      }));
+    });
+  }
+
+  function openEdit(date, e) {
+    editing = { date, id: e.id };
+    targetMeal = e.meal;
+    $('#food-title').textContent = 'Corregir';
+    if (e.src === 'manual') {
+      if (confirm(`¿Quitar «${e.name}» (${int(e.kcal)} kcal)?`)) {
+        const st = getState();
+        st.food[date] = st.food[date].filter(x => x.id !== e.id);
+        if (persist('Quitado.')) render();
+      }
+      editing = null;
+      return;
+    }
+    const item = itemFromRef(e.src, e.ref) || { id: e.ref, n: e.name, a: [], k: e.grams ? e.kcal / e.grams * 100 : e.kcal, p: e.grams ? e.p / e.grams * 100 : 0, c: 0, f: 0, u: [[e.unit, e.qty ? e.grams / e.qty : 100]], src: e.src };
+    dlg.showModal();
+    openPortion(item, e.unit, e.unit === 'g' ? e.grams : e.qty, e);
+  }
+
+  $('#day-prev').addEventListener('click', () => {
+    const d = new Date(viewDay() + 'T12:00'); d.setDate(d.getDate() - 1);
+    const p = n => String(n).padStart(2, '0');
+    day = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    render();
+  });
+  $('#day-next').addEventListener('click', () => {
+    const d = new Date(viewDay() + 'T12:00'); d.setDate(d.getDate() + 1);
+    const p = n => String(n).padStart(2, '0');
+    const next = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    day = next >= today() ? null : next;
+    render();
+  });
+
+  return { renderComidas, openAdd: () => openAdd(mealForNow()), resetDay: () => { day = null; } };
+}
+
+export { norm };

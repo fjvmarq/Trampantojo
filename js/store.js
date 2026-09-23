@@ -23,7 +23,7 @@ export const SCHEMA = 1;
 let lastLoad = 'empty';
 
 export function emptyState() {
-  return { schema: SCHEMA, profile: null, habits: {}, weights: [], milestones: [], meta: {} };
+  return { schema: SCHEMA, profile: null, habits: {}, weights: [], milestones: [], food: {}, dishes: [], products: {}, recentFoods: [], meta: {} };
 }
 
 export function migrate(data) {
@@ -37,6 +37,15 @@ export function migrate(data) {
   if (!Array.isArray(s.milestones)) s.milestones = [];
   s.milestones = s.milestones.filter(m => m && /^\d{4}-\d{2}-\d{2}$/.test(m.date) && Number(m.kg) > 0)
     .map(m => ({ ...m, kg: Number(m.kg) }));
+  // comidas (desde la 0.4): por día, cada apunte con sus kcal ya calculadas
+  if (!s.food || typeof s.food !== 'object' || Array.isArray(s.food)) s.food = {};
+  for (const [d, arr] of Object.entries(s.food)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !Array.isArray(arr)) { delete s.food[d]; continue; }
+    s.food[d] = arr.filter(e => e && Number(e.kcal) >= 0).map(e => ({ ...e, kcal: Number(e.kcal) }));
+  }
+  if (!Array.isArray(s.dishes)) s.dishes = [];
+  if (!s.products || typeof s.products !== 'object' || Array.isArray(s.products)) s.products = {};
+  if (!Array.isArray(s.recentFoods)) s.recentFoods = [];
   // el plan empieza, si no se dijo otra cosa, en la primera pesada
   if (s.profile && !s.profile.plan && s.weights.length) {
     const first = [...s.weights].sort((a, b) => a.date < b.date ? -1 : 1)[0];

@@ -2,13 +2,14 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.3.6';
-import * as S from './store.js?v=0.3.6';
-import { weightChart, rateChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.3.6';
-import { messageOfTheDay } from './messages.js?v=0.3.6';
-import { startAmbient } from './ambient.js?v=0.3.6';
+import * as C from './calc.js?v=0.4.6';
+import * as S from './store.js?v=0.4.6';
+import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.4.6';
+import { initComidas } from './comidas.js?v=0.4.6';
+import { messageOfTheDay } from './messages.js?v=0.4.6';
+import { startAmbient } from './ambient.js?v=0.4.6';
 
-const VERSION = '0.3.6';
+const VERSION = '0.4.6';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -79,10 +80,12 @@ function setSexClass() {
 
 /* ── navegación ─────────────────────────────────────────────────────── */
 
-const SCREENS = ['hoy', 'evolucion', 'registro', 'perfil'];
+const SCREENS = ['hoy', 'comidas', 'evolucion', 'registro', 'perfil'];
+let comidas = null;   // se crea al arrancar, cuando ya existen persist/toast/render
 
 function go(name, { focus, push = true } = {}) {
   if (!SCREENS.includes(name)) name = 'hoy';
+  if (name === 'comidas' && current !== 'comidas') comidas?.resetDay();
   current = name;
   $$('.screen').forEach(sec => { sec.hidden = sec.id !== `screen-${name}`; });
   $$('.tabs button').forEach(b => b.setAttribute('aria-current', b.dataset.go === name ? 'page' : 'false'));
@@ -129,6 +132,7 @@ function render() {
   if (current === 'hoy') renderHoy(s);
   if (current === 'evolucion') renderEvo(s);
   if (current === 'registro') renderLog(s);
+  if (current === 'comidas') comidas?.renderComidas(s);
   if (current === 'perfil') renderPerfil(s);
 }
 
@@ -191,6 +195,8 @@ function renderHoy(s) {
       const nm = s.nextMilestone;
       tile('Próximo objetivo', `${kg1(nm.kg)} kg`, `${nm.name ? nm.name + ' · ' : ''}${shortDate(nm.date)}`, tag(milestoneZone(nm)));
     }
+    tile('Comido hoy', `${kcal(s.kcalToday)} kcal`,
+      s.kcalToday ? (s.target.kcal >= s.kcalToday ? `te quedan ${kcal(s.target.kcal - s.kcalToday)}` : `${kcal(s.kcalToday - s.target.kcal)} por encima`) : 'apúntalo en Comidas');
     tile('Ritmo real', s.rate ? `${signed1(s.rate.perWeek)} kg/sem` : '—',
       s.rate ? 'medido en las últimas 3 semanas' : 'hacen falta 4 pesadas en una semana');
     tile('Meta', `${kg1(p.goalKg)} kg`, goalSentence(s, true));
@@ -326,6 +332,7 @@ function renderEvo(s) {
   });
   renderGoals(s);
   rateChart($('#chart-rate'), s.weekly);
+  kcalChart($('#chart-kcal'), { food: state.food, target: s.target?.kcal, today: s.today });
 
   const facts = $('#facts');
   facts.replaceChildren();
@@ -347,7 +354,8 @@ function renderEvo(s) {
   fact('Peso saludable para tu altura', `${int(s.healthy[0])} – ${int(s.healthy[1])} kg`, `Con ${int(p.heightCm)} cm, es el peso con el que el IMC queda en la zona normal.`);
   if (s.hasData) {
     fact('Metabolismo basal', `${kcal(s.bmr)} kcal`, 'Lo que gasta tu cuerpo en reposo total (fórmula de Mifflin-St Jeor).');
-    fact('Gasto diario', `${kcal(s.tdee)} kcal`, `El basal por tu actividad «${C.ACTIVITY[p.activity]?.label ?? '—'}».`);
+    fact('Gasto diario (fórmula)', `${kcal(s.tdeeFormula)} kcal`, `El basal por tu actividad «${C.ACTIVITY[p.activity]?.label ?? '—'}».`);
+    measuredFact(s);
     const t = s.target;
     fact(s.maintain ? 'Calorías para mantener' : 'Calorías para tu ritmo', `${kcal(t.kcal)} kcal`,
       s.maintain ? 'Ya estás en tu meta: comer lo que gastas.'
@@ -362,6 +370,36 @@ function renderEvo(s) {
   else fact('Grasa corporal', '—', p.sex === 'm' ? 'Apunta cintura, cuello y cadera y la estimo.' : 'Apunta cintura y cuello y la estimo.');
   if (s.hasData && s.entries.length > 1) fact('Cambio desde el inicio', `${signed1(-s.lostKg)} kg`, `Desde el ${shortDate(s.startDate)}: ${signed1(-s.lostPct)} % de tu peso.`);
   fact('Edad', `${s.age} años`, null);
+}
+
+// El gasto medido: aparece cuando hay 14 días apuntados, con el botón para usarlo.
+function measuredFact(s) {
+  const facts = $('#facts');
+  const wrap = document.createElement('div');
+  const dt = document.createElement('dt'); dt.textContent = 'Tu gasto real, medido';
+  const dd = document.createElement('dd');
+  const v = document.createElement('span'); v.className = 'fact-value';
+  const note = document.createElement('small');
+  if (!s.measured) {
+    v.textContent = '—';
+    note.textContent = 'Apunta lo que comes y pésate: con 14 días de comidas en las últimas 4 semanas, mido lo que gastas de verdad. Corrige la fórmula y los errores de la tabla.';
+    dd.append(v, note);
+  } else {
+    v.textContent = `${kcal(s.measured.tdee)} kcal`;
+    const using = !!state.profile.useMeasured;
+    note.textContent = `Comiste de media ${kcal(s.measured.avgIntake)} kcal (${s.measured.logged} días apuntados) y tu tendencia ${s.measured.change < 0 ? 'bajó' : 'subió'} ${kg1(Math.abs(s.measured.change))} kg en ${s.measured.days} días. ${using ? 'Tu objetivo diario ya sale de este gasto.' : 'Tu objetivo diario sale de la fórmula.'}`;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn ghost small';
+    b.textContent = using ? 'Volver a la fórmula' : 'Usar este gasto';
+    b.addEventListener('click', () => {
+      state.profile.useMeasured = !using;
+      if (persist(using ? 'Tu objetivo vuelve a salir de la fórmula.' : 'Tu objetivo sale ahora de tu gasto medido.')) render();
+    });
+    dd.append(v, note, b);
+  }
+  wrap.append(dt, dd);
+  facts.appendChild(wrap);
 }
 
 function renderLog(s) {
@@ -752,10 +790,13 @@ function reflectTheme() {
   $$('#theme-seg button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.themeChoice === t)));
 }
 
-$$('#theme-seg button').forEach(b => b.addEventListener('click', () => {
-  try { localStorage.setItem('trampantojo:tema', b.dataset.themeChoice); } catch { /* sólo en esta sesión */ }
-  applyTheme(b.dataset.themeChoice);
-}));
+function setThemeChoice(t) {
+  try { localStorage.setItem('trampantojo:tema', t); } catch { /* sólo en esta sesión */ }
+  applyTheme(t);
+}
+
+
+$$('#theme-seg button').forEach(b => b.addEventListener('click', () => setThemeChoice(b.dataset.themeChoice)));
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme(themeChoice()));
 
 function updateActivityHint() {
@@ -1107,6 +1148,7 @@ if ('serviceWorker' in navigator) {
 
 applyTheme(themeChoice());
 startAmbient();
+comidas = initComidas({ getState: () => state, persist, toast, today, render });
 setSexClass();
 if (loaded.status === 'unreadable') showStorageAlert();
 else if (!state.profile) startWelcome();

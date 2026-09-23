@@ -58,6 +58,8 @@ carga, si el service worker está activo y cuántas pesadas hay guardadas.
 | Fecha de la meta | Kilos que faltan ÷ ritmo real |
 | Tu plan | Recta desde donde empezaste hasta tu peso objetivo **en la fecha que elijas** («¿para cuándo?»); el ritmo sale de la fecha, o eliges un ritmo y te pone la fecha. Nunca más de 1 kg/semana. En la gráfica de Hoy («tu camino») es la **línea a seguir**, desde el primer día hasta la bandera de la meta; ±0,5 kg alrededor es ir en tu línea. Cambiar la meta o la fecha lo reinicia desde hoy |
 | Objetivos intermedios | Un peso para una fecha («88 kg para Navidad»): un rombo en la gráfica. **Conseguido** si la tendencia llegó antes de la fecha; si no, se mira a dónde llegas a tu ritmo real y cuántos kg/semana harían falta |
+| Comidas | Tabla propia de ~200 alimentos y platos españoles con raciones caseras (`js/foods.js`), búsqueda sin tildes y por alias, **frases** («2 huevos y una tostada con aceite»), **código de barras** (Open Food Facts) y **mis platos**. Cada apunte guarda sus kcal calculadas en el momento |
+| Gasto real medido | Con 14 días de comidas apuntadas en 4 semanas: media comida + (bajada de la tendencia × 7.700 / días). Se puede usar en vez de la fórmula para el objetivo diario |
 | IMC y peso saludable | Zonas de la OMS (18,5 – 24,9) |
 | Metabolismo basal | Mifflin-St Jeor |
 | Gasto diario | Basal × actividad (1,2 · 1,375 · 1,55 · 1,725 · 1,9), con sugerencia a partir de tus hábitos |
@@ -88,6 +90,8 @@ python -m http.server 8791
 | `js/calc.js` | los cálculos, sin pantalla (se prueban en `tests.html`) |
 | `js/store.js` | guardar y leer, copias internas, copia en fichero |
 | `js/charts.js` | los gráficos en SVG, sin librerías |
+| `js/foods.js` | la tabla de alimentos, la búsqueda y las frases (se prueban en `tests.html`) |
+| `js/comidas.js` | la pantalla de Comidas: apuntar, código de barras, mis platos |
 | `js/messages.js` | el mensaje del día |
 | `js/app.js` | el hilo: pantallas, formularios, selectores y tema |
 | `js/ambient.js` | el fondo vivo (constelación y paralaje), portado de bimio.tools |

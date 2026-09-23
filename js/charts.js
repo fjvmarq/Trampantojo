@@ -5,7 +5,7 @@
    discreta, una etiqueta sólo donde importa (el último valor) y el resto
    en el recuadro que sale al tocar. */
 
-import { addDays, daysBetween, parseDate, planKgAt, PLAN_LANE } from './calc.js?v=0.3.6';
+import { addDays, daysBetween, parseDate, planKgAt, PLAN_LANE } from './calc.js?v=0.4.6';
 
 const NS = 'http://www.w3.org/2000/svg';
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -376,6 +376,79 @@ export function rateChart(container, weekly) {
     sw.className = k;
     s.append(sw, document.createTextNode(label));
     legend.appendChild(s);
+  });
+  container.appendChild(legend);
+}
+
+/* ── calorías por día ───────────────────────────────────────────────── */
+
+let intFmt;
+try { intFmt = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0, useGrouping: 'always' }); }
+catch { intFmt = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }); }
+
+/* opts: food (por día), target (kcal), today, days (cuántos, 14 por defecto) */
+export function kcalChart(container, { food, target, today, days = 14 }) {
+  container.replaceChildren();
+  container.classList.add('chart');
+  const dates = Array.from({ length: days }, (_, i) => addDays(today, i - days + 1));
+  const vals = dates.map(d => (food?.[d] || []).reduce((a, e) => a + (e.kcal || 0), 0));
+  if (!vals.some(v => v > 0)) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = 'Aún no has apuntado comidas. Hazlo en la pestaña Comidas y aquí verás cada día frente a tu objetivo.';
+    container.appendChild(p);
+    return;
+  }
+  const W = Math.max(280, container.clientWidth), H = 190;
+  const m = { l: 40, r: 12, t: 18, b: 24 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  let hi = Math.max(target ? target * 1.25 : 0, ...vals) * 1.05;
+  const step = niceStep(hi, 3) >= 100 ? niceStep(hi, 3) : 500;
+  const nice = [250, 500, 1000, 1500, 2000].find(x => x >= hi / 3) || 2500;
+  hi = Math.ceil(hi / nice) * nice;
+  const Y = v => m.t + (1 - v / hi) * ih;
+  const band = iw / days;
+  const bw = Math.min(24, band * 0.62);
+  const svg = el('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Calorías de cada día frente a tu objetivo' }, container);
+  for (let v = 0; v <= hi + 1e-9; v += nice) {
+    el('line', { x1: m.l, x2: m.l + iw, y1: Y(v), y2: Y(v), class: v === 0 ? 'baseline' : 'grid' }, svg);
+    text(svg, m.l - 6, Y(v) + 4, intFmt.format(v), 'axis', 'end');
+  }
+  const tip = tooltip(container);
+  tip.hidden = true;
+  dates.forEach((d, i) => {
+    const v = vals[i];
+    const x = m.l + band * i + (band - bw) / 2;
+    if (v > 0) {
+      const y1 = Y(v), y0 = Y(0), rr = Math.min(4, bw / 2, y0 - y1);
+      el('path', { d: `M${x},${y0}V${y1 + rr}Q${x},${y1} ${x + rr},${y1}H${x + bw - rr}Q${x + bw},${y1} ${x + bw},${y1 + rr}V${y0}Z`, class: target && v > target * 1.05 ? 'bar-over' : 'bar-ok' }, svg);
+    }
+    if (i % 2 === (days - 1) % 2) text(svg, x + bw / 2, H - 6, i === days - 1 ? 'hoy' : String(parseDate(d).getDate()), 'axis', 'middle');
+    const hit = el('rect', { x: m.l + band * i, y: m.t, width: band, height: ih, class: 'hit', tabindex: 0 }, svg);
+    const diff = target ? v - target : 0;
+    const on = () => showTip(container, tip, [
+      ['tip-value', v ? `${intFmt.format(v)} kcal` : 'Sin apuntar'],
+      ...(v && target ? [['tip-sub', diff > 0 ? `${intFmt.format(diff)} por encima` : `${intFmt.format(-diff)} por debajo`]] : []),
+      ['tip-date', longDate(d)],
+    ], x + bw / 2, Y(Math.max(v, 0)));
+    hit.addEventListener('pointerenter', on);
+    hit.addEventListener('pointerdown', on);
+    hit.addEventListener('focus', on);
+    hit.addEventListener('pointerleave', () => { tip.hidden = true; });
+    hit.addEventListener('blur', () => { tip.hidden = true; });
+  });
+  if (target) {
+    el('line', { x1: m.l, x2: m.l + iw, y1: Y(target), y2: Y(target), class: 'target-line' }, svg);
+    text(svg, m.l + iw, Y(target) - 5, `Objetivo ${intFmt.format(Math.round(target / 10) * 10)}`, 'goal-label', 'end');
+  }
+  const legend = document.createElement('div');
+  legend.className = 'legend';
+  [['key-bar-down', 'Dentro del objetivo'], ['key-bar-over', 'Por encima']].forEach(([k, label]) => {
+    const sp = document.createElement('span');
+    const sw = document.createElement('i');
+    sw.className = k;
+    sp.append(sw, document.createTextNode(label));
+    legend.appendChild(sp);
   });
   container.appendChild(legend);
 }

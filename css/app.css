@@ -450,6 +450,41 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 .log-row.add .log-date { color: var(--accent); font-weight: 600; }
 .card.spaced { margin-top: 14px; }
 
+/* ── comidas ────────────────────────────────────────────────── */
+
+.day-nav { display: flex; align-items: center; justify-content: space-between; margin: 0 0 12px; }
+.day-nav .btn { margin: 0; padding: 0 6px; }
+.day-nav .btn:disabled { color: var(--ink-4); cursor: default; }
+.day-label { font-weight: 700; font-size: 16px; }
+.day-label::first-letter { text-transform: uppercase; }
+.meter { height: 10px; border-radius: var(--pill); background: var(--accent-soft); overflow: hidden; margin: 12px 0 4px; }
+.meter span { display: block; height: 100%; width: 0; border-radius: var(--pill); background: var(--accent); transition: width 0.3s ease; }
+.meter span.over { background: var(--warn); }
+.search input {
+  width: 100%; font: inherit; font-size: 17px; color: var(--ink);
+  background: var(--neutral-soft); border: 0; border-radius: var(--radius-sm);
+  padding: 12px 14px; outline: none;
+}
+.search input:focus { box-shadow: 0 0 0 2px var(--accent); }
+.food-actions { display: flex; gap: 8px; margin: 10px 0 0; flex-wrap: wrap; }
+.food-actions .btn { margin: 0; }
+.phrase { margin: 14px 0 0; }
+.phrase-line { margin: 4px 0; font-size: 15.5px; }
+.phrase-line.miss { color: var(--warn-text); }
+.phrase .btn.block { margin-top: 12px; }
+.portion-name { margin: 4px 4px 2px; font-size: 22px; font-weight: 700; letter-spacing: -0.015em; }
+.ideas .btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.stepper button {
+  width: 38px; height: 38px; border-radius: var(--pill); border: 0; cursor: pointer;
+  background: var(--neutral-soft); color: var(--accent); font: inherit; font-size: 22px; font-weight: 600; line-height: 1;
+}
+.stepper input { width: 64px; text-align: center; color: var(--ink); font-weight: 700; padding: 6px 0; flex: none; }
+.card.result { margin: 14px 0 0; text-align: center; }
+.card.result .hero-value { font-size: 38px; }
+#scan-video { width: 100%; border-radius: var(--radius); background: var(--ink); aspect-ratio: 4 / 3; object-fit: cover; }
+dialog.sheet.tall { min-height: 80vh; }
+
 /* ── evolución: datos de salud ──────────────────────────────── */
 
 .facts > div { position: relative; padding: 13px 18px; }
@@ -495,6 +530,9 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 .chart .hit { fill: transparent; cursor: crosshair; outline: none; }
 .chart .bar-down { fill: var(--chart-trend); }
 .chart .bar-up { fill: var(--chart-up); }
+.chart .bar-ok { fill: var(--chart-trend); }
+.chart .bar-over { fill: var(--warn); }
+.chart .target-line { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 4 4; }
 .chart .lane { fill: var(--chart-trend); opacity: 0.08; }
 .chart .plan-line { fill: none; stroke: var(--chart-trend); stroke-width: 1.6; stroke-dasharray: 7 5; stroke-linecap: round; opacity: 0.75; }
 .chart .flag { fill: var(--chart-trend); stroke: var(--card); stroke-width: 2; }
@@ -528,6 +566,7 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 .key-ms { width: 9px; height: 9px; background: var(--ink-2); transform: rotate(45deg); margin: 0 2px; }
 .key-bar-down, .key-bar-up { width: 10px; height: 10px; border-radius: 3px; }
 .key-bar-down { background: var(--chart-trend); }
+.key-bar-over { width: 10px; height: 10px; border-radius: 3px; background: var(--warn); }
 .key-bar-up { background: var(--chart-up); }
 
 /* ── pestañas: translúcidas, como la barra de bimio.tools ───── */
