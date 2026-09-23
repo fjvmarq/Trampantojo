@@ -4,8 +4,8 @@
    decide cuál, para que no cambie cada vez que abres la app.
    Tono: de apoyo, nunca de culpa. Un día malo no es un fracaso. */
 
-import { kg1, shortDate } from './charts.js?v=0.4.6';
-import { daysBetween } from './calc.js?v=0.4.6';
+import { kg1, shortDate } from './charts.js?v=0.5.3';
+import { daysBetween } from './calc.js?v=0.5.3';
 
 const pct1 = v => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(v);
 
@@ -82,6 +82,18 @@ export function messageOfTheDay(s, profile, now = new Date()) {
       add(4, 'Por delante de tu plan', `Vas ${kg1(-s.pace.diff)} kg mejor de lo previsto. Sin prisa: lo que se baja despacio no vuelve.`);
     } else if (s.pace?.status === 'behind' && n >= 7) {
       add(4, 'Un poco por detrás del plan', `Vas ${kg1(s.pace.diff)} kg por encima de lo previsto. No pasa nada: una semana ordenada y vuelves al carril.`);
+    }
+    const cr = profile && s.cravings ? s.cravings : null;
+    if (cr && cr.length >= 3) {
+      const byHour = Array(24).fill(0);
+      cr.forEach(c => { byHour[c.hour]++; });
+      const peak = byHour.indexOf(Math.max(...byHour));
+      const lead = (peak - hour + 24) % 24;
+      if (byHour[peak] >= 2 && lead >= 0 && lead <= 1) {
+        add(6, 'Se acerca tu hora', `Suele darte un antojo sobre las ${peak}:00. Ten a mano una alternativa (fruta, un yogur, una infusión) y, si llega, pulsa «Tengo un antojo».`);
+      }
+      const won = cr.filter(c => c.date === s.today && (c.outcome === 'resistido' || c.outcome === 'alternativa')).length;
+      if (won) add(5, won === 1 ? 'Antojo vencido' : `${won} antojos vencidos hoy`, 'Cada vez que dejas pasar la ola, el hábito se debilita un poco. Así se cambia de verdad.');
     }
     add(1, name ? `Hola, ${name}` : 'Hola',
       'Un día bueno no te hace delgado y un día malo no te hace gordo. Lo que cuenta es la línea, y la línea la haces tú.');

@@ -389,6 +389,7 @@ export function summarize(state, today = todayISO()) {
   s.measured = measuredTdee(state.food, daily, today);
   if (profile.useMeasured && s.measured) s.tdee = s.measured.tdee;
   s.kcalToday = dayKcal(state.food, today);
+  s.cravings = state.cravings || [];
   s.maintain = s.trendKg - profile.goalKg <= 0.25;
   // el plan manda sobre el ritmo: con fecha de meta, el ritmo sale de la fecha
   s.plan = profile.plan || { startDate: entries[0].date, startKg: entries[0].kg };

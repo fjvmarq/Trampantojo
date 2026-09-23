@@ -2,14 +2,15 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.4.6';
-import * as S from './store.js?v=0.4.6';
-import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.4.6';
-import { initComidas } from './comidas.js?v=0.4.6';
-import { messageOfTheDay } from './messages.js?v=0.4.6';
-import { startAmbient } from './ambient.js?v=0.4.6';
+import * as C from './calc.js?v=0.5.3';
+import * as S from './store.js?v=0.5.3';
+import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.5.3';
+import { initComidas } from './comidas.js?v=0.5.3';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.5.3';
+import { messageOfTheDay } from './messages.js?v=0.5.3';
+import { startAmbient } from './ambient.js?v=0.5.3';
 
-const VERSION = '0.4.6';
+const VERSION = '0.5.3';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -333,6 +334,7 @@ function renderEvo(s) {
   renderGoals(s);
   rateChart($('#chart-rate'), s.weekly);
   kcalChart($('#chart-kcal'), { food: state.food, target: s.target?.kcal, today: s.today });
+  renderCravingCard($('#craving-card'), state.cravings, s.today, state.food, s.protein ? (s.protein[0] + s.protein[1]) / 2 : null);
 
   const facts = $('#facts');
   facts.replaceChildren();
@@ -1149,6 +1151,7 @@ if ('serviceWorker' in navigator) {
 applyTheme(themeChoice());
 startAmbient();
 comidas = initComidas({ getState: () => state, persist, toast, today, render });
+initAntojo({ getState: () => state, persist, toast, today, render, summary: () => C.summarize(state, today()) });
 setSexClass();
 if (loaded.status === 'unreadable') showStorageAlert();
 else if (!state.profile) startWelcome();

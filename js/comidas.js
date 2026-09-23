@@ -8,8 +8,8 @@
    Cada apunte guarda sus calorías y nutrientes CALCULADOS en el momento: si la
    tabla cambia en una versión futura, lo que comiste ayer no cambia. */
 
-import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.4.6';
-import { kg1 } from './charts.js?v=0.4.6';
+import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.5.3';
+import { kg1 } from './charts.js?v=0.5.3';
 
 export const MEALS = [
   { id: 'desayuno', label: 'Desayuno' },

@@ -5,7 +5,7 @@
    discreta, una etiqueta sólo donde importa (el último valor) y el resto
    en el recuadro que sale al tocar. */
 
-import { addDays, daysBetween, parseDate, planKgAt, PLAN_LANE } from './calc.js?v=0.4.6';
+import { addDays, daysBetween, parseDate, planKgAt, PLAN_LANE } from './calc.js?v=0.5.3';
 
 const NS = 'http://www.w3.org/2000/svg';
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];

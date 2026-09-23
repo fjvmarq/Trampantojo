@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/app.css?v=0.4.6">
+  <link rel="stylesheet" href="css/app.css?v=0.5.3">
 </head>
 <body>
   <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
@@ -55,6 +55,12 @@
           </details>
         </form>
 
+<button type="button" class="card craving-cta" data-craving>
+          <span class="craving-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 15c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 3 3"/><path d="M3 19c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 3 3"/><path d="M12 3v5M9.5 6 12 8.5 14.5 6"/></svg></span>
+          <span class="craving-text"><strong>Tengo un antojo</strong><small>Púlsalo antes de comer: te explico por qué te pasa y cómo pasarlo</small></span>
+          <span class="chev" aria-hidden="true"></span>
+        </button>
+
         <div class="card message" id="message-card">
           <p class="eyebrow">Para hoy</p>
           <p class="message-title" id="message-title"></p>
@@ -87,6 +93,11 @@
           <span class="day-label" id="day-label">Hoy</span>
           <button type="button" class="btn plain small" id="day-next">Siguiente ›</button>
         </div>
+<button type="button" class="card craving-cta" data-craving>
+          <span class="craving-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 15c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 3 3"/><path d="M3 19c2.5 0 2.5-3 5-3s2.5 3 5 3 2.5-3 5-3 2.5 3 3 3"/><path d="M12 3v5M9.5 6 12 8.5 14.5 6"/></svg></span>
+          <span class="craving-text"><strong>Tengo un antojo</strong><small>Antes de picar: por qué te pasa y cómo pasarlo</small></span>
+          <span class="chev" aria-hidden="true"></span>
+        </button>
         <div class="card intake">
           <p class="eyebrow" id="intake-label">Hoy llevas</p>
           <p class="hero-value"><span id="kcal-eaten">0</span><span class="unit">kcal</span></p>
@@ -122,6 +133,10 @@
           <p class="eyebrow">Ritmo semana a semana</p>
           <p class="card-sub">Cuánto ha bajado o subido tu tendencia cada semana.</p>
           <div class="chart-box" id="chart-rate"></div>
+        </div>
+        <div class="card">
+          <p class="eyebrow">Tus antojos</p>
+          <div id="craving-card"></div>
         </div>
         <div class="card">
           <p class="eyebrow">Calorías por día</p>
@@ -419,6 +434,100 @@
     </div>
   </dialog>
 
+  <!-- ── Tengo un antojo ─────────────────────────────────────── -->
+  <dialog id="craving-dialog" class="sheet tall">
+    <div class="sheet-grabber" aria-hidden="true"></div>
+    <div class="sheet-bar">
+      <button type="button" class="bar-btn" id="crv-close">Cerrar</button>
+      <h2 id="crv-title">Tengo un antojo</h2>
+      <span></span>
+    </div>
+
+    <div id="crv-step1">
+      <p class="crv-q">¿Qué te apetece?</p>
+      <div class="crv-types" id="crv-types"></div>
+      <p class="section-foot">Antes de nada: un antojo sube como una ola y baja solo en 10–20 minutos. Vamos a pasarlo juntos.</p>
+    </div>
+
+    <div id="crv-step2" hidden>
+      <p class="crv-q">¿Cuánta hambre de estómago tienes?</p>
+      <p class="section-foot crv-help">La de verdad, la que se calmaría con un plato de lentejas.</p>
+      <div class="segmented" role="radiogroup" aria-label="Hambre" id="crv-hunger"></div>
+      <p class="crv-q">¿Cómo estás ahora?</p>
+      <div class="ideas" id="crv-mood"></div>
+      <p class="crv-q">¿Cuánto dormiste anoche?</p>
+      <div class="segmented" role="radiogroup" aria-label="Sueño" id="crv-sleep"></div>
+      <button type="button" class="btn primary block" id="crv-go">Ver por qué me pasa</button>
+    </div>
+
+    <div id="crv-step3" hidden>
+      <div class="card">
+        <p class="eyebrow">Por qué te pasa</p>
+        <div class="crv-why" id="crv-why"></div>
+        <p class="card-foot" id="crv-basis"></p>
+      </div>
+      <div class="card">
+        <p class="eyebrow">Lo que te cuesta</p>
+        <p class="hero-value crv-kcal" id="crv-kcal"></p>
+        <p class="card-sub" id="crv-cost"></p>
+      </div>
+      <div class="card reasons" id="crv-reasons-card">
+        <p class="eyebrow">Tus razones</p>
+        <p class="message-text" id="crv-reasons"></p>
+      </div>
+      <p class="section-label">¿Qué hacemos?</p>
+      <button type="button" class="btn primary block" id="crv-wait">Esperar 10 minutos conmigo</button>
+      <button type="button" class="btn ghost block" id="crv-alt">Dame una alternativa sana</button>
+      <button type="button" class="btn plain block" id="crv-eat">Me lo como, pero con cabeza</button>
+      <button type="button" class="btn plain block" id="crv-passed">Ya se me ha pasado</button>
+    </div>
+
+    <div id="crv-timer" hidden>
+      <div class="crv-ring">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="60" cy="60" r="54" class="ring-bg"/>
+          <circle cx="60" cy="60" r="54" class="ring-fg" id="crv-ring-fg" transform="rotate(-90 60 60)"/>
+        </svg>
+        <span class="crv-clock" id="crv-clock">10:00</span>
+      </div>
+      <div id="crv-timer-running">
+        <p class="message-title center">Mientras tanto</p>
+        <p class="message-text center crv-tip" id="crv-tip"></p>
+        <button type="button" class="btn ghost block" id="crv-early">Ya se me ha pasado</button>
+      </div>
+      <div id="crv-timer-end" hidden>
+        <p class="message-title center">Diez minutos. ¿Se te ha pasado?</p>
+        <button type="button" class="btn primary block" id="crv-yes">Sí, vencido</button>
+        <button type="button" class="btn ghost block" id="crv-no">No, sigo con ganas</button>
+      </div>
+    </div>
+
+    <div id="crv-alts" hidden>
+      <p class="card-sub" id="crv-alt-intro"></p>
+      <ul class="group log" id="crv-alt-list"></ul>
+      <button type="button" class="btn plain block" id="crv-alt-back">Volver</button>
+    </div>
+
+    <div id="crv-eatview" hidden>
+      <div class="card">
+        <p class="eyebrow">Con cabeza</p>
+        <p class="message-title">Una ración pequeña, sentado y despacio</p>
+        <p class="message-text">Sírvela en un plato (nunca del paquete), siéntate, sin pantallas, y cómetela despacio notando el sabor. La mitad del placer está en los primeros bocados.</p>
+        <p class="message-title crv-portion" id="crv-eat-portion"></p>
+      </div>
+      <button type="button" class="btn primary block" id="crv-eat-add">Apuntar esta ración</button>
+      <button type="button" class="btn plain block" id="crv-eat-back">Volver</button>
+    </div>
+
+    <div id="crv-done" hidden>
+      <div class="crv-done-mark" aria-hidden="true">✓</div>
+      <p class="message-title center" id="crv-done-title"></p>
+      <p class="message-text center" id="crv-done-text"></p>
+      <p class="card-foot center" id="crv-done-stats"></p>
+      <button type="button" class="btn primary block" id="crv-done-close">Cerrar</button>
+    </div>
+  </dialog>
+
   <!-- ── Guardar una comida como plato ───────────────────────── -->
   <dialog id="dish-dialog" class="sheet">
     <form id="dish-form" autocomplete="off">
@@ -448,6 +557,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.4.6"></script>
+  <script type="module" src="js/app.js?v=0.5.3"></script>
 </body>
 </html>

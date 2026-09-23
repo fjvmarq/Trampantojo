@@ -450,6 +450,61 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 .log-row.add .log-date { color: var(--accent); font-weight: 600; }
 .card.spaced { margin-top: 14px; }
 
+/* ── tengo un antojo ─────────────────────────────────────────── */
+
+.craving-cta {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; cursor: pointer;
+  font: inherit; color: var(--ink);
+  border-color: color-mix(in srgb, #ff9f1a 45%, var(--line));
+  background: linear-gradient(135deg, color-mix(in srgb, #ffde4a 16%, var(--card)), var(--card) 70%);
+}
+.craving-cta:active { transform: scale(0.99); }
+.craving-icon {
+  width: 46px; height: 46px; border-radius: 13px; flex: none; display: grid; place-items: center;
+  background: linear-gradient(135deg, #ffde4a, #ff9f1a); box-shadow: 0 4px 12px var(--icon-glow);
+}
+.craving-icon svg { width: 26px; height: 26px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.craving-text { flex: 1; min-width: 0; }
+.craving-text strong { display: block; font-size: 18px; letter-spacing: -0.01em; }
+.craving-text small { display: block; font-size: 13.5px; color: var(--ink-2); line-height: 1.35; margin-top: 2px; }
+.crv-q { margin: 18px 4px 8px; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.crv-q:first-child { margin-top: 4px; }
+.crv-help { margin: -4px 4px 10px; }
+.crv-types { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.crv-type {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 72px; padding: 12px 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+  font: inherit; color: var(--ink); text-align: left; cursor: pointer;
+}
+.crv-type:active { background: var(--hover); }
+.crv-type-label { font-weight: 700; font-size: 15.5px; line-height: 1.25; }
+.crv-type-kcal { font-size: 13px; color: var(--ink-3); }
+.crv-why .message-title { margin-top: 10px; }
+.crv-why .message-title:first-child { margin-top: 2px; }
+.crv-kcal { font-size: 38px; }
+.reasons { border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
+.reasons.empty-reasons .message-text { font-size: 14.5px; }
+.crv-ring { position: relative; width: 220px; height: 220px; margin: 10px auto 18px; }
+.crv-ring svg { width: 100%; height: 100%; }
+.crv-ring .ring-bg { fill: none; stroke: var(--accent-soft); stroke-width: 9; }
+.crv-ring .ring-fg { fill: none; stroke: var(--accent); stroke-width: 9; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+.crv-clock { position: absolute; inset: 0; display: grid; place-items: center; font-size: 46px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.crv-tip { min-height: 3em; }
+.crv-portion { margin-top: 12px; }
+.crv-done-mark {
+  width: 76px; height: 76px; margin: 20px auto 12px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--ok); color: #fff; font-size: 40px; font-weight: 700; box-shadow: 0 8px 24px color-mix(in srgb, var(--ok) 35%, transparent);
+}
+.heat { display: grid; grid-template-columns: 22px repeat(5, 1fr); gap: 4px; margin: 12px 0 4px; }
+.heat-h { font-size: 11px; color: var(--ink-3); text-align: center; font-weight: 600; }
+.heat-d { font-size: 11.5px; color: var(--ink-3); font-weight: 600; display: grid; place-items: center; }
+.heat-c {
+  height: 28px; border-radius: 7px; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; color: var(--ink);
+  background: color-mix(in srgb, var(--accent) calc(var(--lvl, 0) * 70% + 4%), transparent);
+}
+.insights { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.insights .message-title { margin-top: 10px; font-size: 16.5px; }
+
 /* ── comidas ────────────────────────────────────────────────── */
 
 .day-nav { display: flex; align-items: center; justify-content: space-between; margin: 0 0 12px; }

@@ -18,10 +18,11 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.4.6';
-    import * as S from './js/store.js?v=0.4.6';
-    import { messageOfTheDay } from './js/messages.js?v=0.4.6';
-    import * as FO from './js/foods.js?v=0.4.6';
+    import * as C from './js/calc.js?v=0.5.3';
+    import * as S from './js/store.js?v=0.5.3';
+    import { messageOfTheDay } from './js/messages.js?v=0.5.3';
+    import * as FO from './js/foods.js?v=0.5.3';
+    import * as AN from './js/antojo.js?v=0.5.3';
 
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
@@ -150,6 +151,36 @@
     const foodL = {}; for (let i = 60; i < 88; i++) foodL[C.addDays('2026-06-01', i)] = [{ kcal: 2000 }];
     const ml = C.measuredTdee(foodL, lose, C.addDays('2026-06-01', 87));
     check('gasto medido: bajando 0,35 kg/sem comiendo 2000 ≈ 2385', ml && Math.abs(ml.tdee - 2385) < 40, JSON.stringify(ml));
+
+    // el antojo
+    const base = { hour: 18, weekday: 2, hunger: 3, mood: 'bien', sleep: 8, craving: AN.CRAVINGS[1], eatenKcal: 1500, proteinG: 90, logged: true, hoursSinceMeal: 1, target: 2000, proteinTarget: 100, daysTracked: 30, sameHourCount: 0, stalled: false };
+    const ant1 = AN.explain({ ...base, hunger: 9, hoursSinceMeal: 5 });
+    check('antojo: mucha hambre y 5 h sin comer = hambre de verdad', ant1[0].title === 'Es hambre de verdad', ant1.map(r => r.title).join(' · '));
+    const ant2 = AN.explain({ ...base, mood: 'aburrido', hunger: 1 });
+    check('antojo: poca hambre y aburrido = aburrimiento', ant2[0].title === 'Es aburrimiento, no estómago', ant2.map(r => r.title).join(' · '));
+    const ant3 = AN.explain({ ...base, sleep: 5, mood: 'estres' });
+    check('antojo: estrés y poco sueño salen los dos', ant3.some(r => /estrés/.test(r.title)) && ant3.some(r => /dormido/.test(r.title)), ant3.map(r => r.title).join(' · '));
+    const ant4 = AN.explain({ ...base, logged: true, eatenKcal: 300, hour: 20, hunger: 5 });
+    check('antojo: comer muy poco de día se dice', ant4.some(r => /muy poco/.test(r.title)), ant4.map(r => r.title).join(' · '));
+    check('antojo: siempre explica algo (la ola)', AN.explain({ ...base, logged: false }).length >= 1);
+    const c1 = AN.cost({ kcal: 300, weightKg: 90, remaining: 600, target: 2000 });
+    check('antojo: 300 kcal = el 50 % de lo que queda', c1.pctRemaining === 50);
+    check('antojo: 300 kcal a diario ≈ 14,2 kg al año', near(c1.kgYearIfDaily, 14.2, 0.1));
+    check('antojo: con alergia a la lactosa no propone yogur', AN.alternatives('dulce', 3, { allergies: 'lactosa' }).every(a => !/yogur/i.test(a.label)));
+    check('antojo: con mucha hambre propone comida de verdad primero', AN.alternatives('dulce', 9, {})[0].label.startsWith('Una tortilla'));
+    // el análisis a largo plazo: días con desayuno pobre y más antojos
+    const foodA = {}, crA = [];
+    for (let i = 0; i < 20; i++) {
+      const d = C.addDays('2026-09-01', i);
+      const poor = i % 2 === 0;
+      foodA[d] = [{ meal: 'desayuno', kcal: poor ? 100 : 450, p: 5, t: new Date(d + 'T08:00').getTime() }, { meal: 'comida', kcal: 1200, p: 60, t: new Date(d + 'T14:00').getTime() }];
+      const n = poor ? 2 : 0;
+      for (let k = 0; k < n; k++) crA.push({ id: d + k, date: d, hour: 18, weekday: new Date(d).getDay(), t: new Date(d + 'T18:00').getTime(), mood: 'aburrido', sleep: 8, outcome: 'resistido' });
+    }
+    const an = AN.analyzeCravings(crA, foodA, '2026-09-20', 100);
+    check('análisis: ve que desayunar poco da más antojos', an.insights.some(i => /desayuno/.test(i.title)), JSON.stringify(an.insights.map(i => i.title)));
+    check('análisis: ve que el aburrimiento es tu disparador', an.insights.some(i => /detrás/.test(i.title)));
+    check('análisis: con menos de 5 antojos no se inventa nada', AN.analyzeCravings(crA.slice(0, 3), foodA, '2026-09-20', 100).need === 2);
 
     // semanas y racha
     const wk = C.weeklyChanges(C.dailySeries(days('2026-07-01', 60, i => 100 - 0.1 * i)));

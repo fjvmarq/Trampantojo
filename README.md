@@ -60,6 +60,8 @@ carga, si el service worker está activo y cuántas pesadas hay guardadas.
 | Objetivos intermedios | Un peso para una fecha («88 kg para Navidad»): un rombo en la gráfica. **Conseguido** si la tendencia llegó antes de la fecha; si no, se mira a dónde llegas a tu ritmo real y cuántos kg/semana harían falta |
 | Comidas | Tabla propia de ~200 alimentos y platos españoles con raciones caseras (`js/foods.js`), búsqueda sin tildes y por alias, **frases** («2 huevos y una tostada con aceite»), **código de barras** (Open Food Facts) y **mis platos**. Cada apunte guarda sus kcal calculadas en el momento |
 | Gasto real medido | Con 14 días de comidas apuntadas en 4 semanas: media comida + (bajada de la tendencia × 7.700 / días). Se puede usar en vez de la fórmula para el objetivo diario |
+| Tengo un antojo | Qué te apetece, tres preguntas (hambre, cómo estás, sueño) y **por qué te pasa**: con lo que llevas comido hoy (horas sin comer, proteína, si has comido poco) o, sin comidas apuntadas, por lo psicológico (estrés, aburrimiento, sueño, costumbre de esa hora, la noche). Lo que cuesta (kcal, minutos andando, % de lo que queda), tus razones y tres salidas: esperar 10 minutos, una alternativa sana (respeta alergias y lo que no te gusta) o comértelo con cabeza |
+| Análisis de antojos | Cruza tus antojos con tus comidas de los últimos 60 días: desayuno pobre, poca proteína, comer muy poco, sueño, tu disparador más habitual, horas tras la última comida y tu momento difícil. Sólo afirma lo que los datos sostienen (≥3 días por grupo, diferencia ×1,5) |
 | IMC y peso saludable | Zonas de la OMS (18,5 – 24,9) |
 | Metabolismo basal | Mifflin-St Jeor |
 | Gasto diario | Basal × actividad (1,2 · 1,375 · 1,55 · 1,725 · 1,9), con sugerencia a partir de tus hábitos |
@@ -92,6 +94,8 @@ python -m http.server 8791
 | `js/charts.js` | los gráficos en SVG, sin librerías |
 | `js/foods.js` | la tabla de alimentos, la búsqueda y las frases (se prueban en `tests.html`) |
 | `js/comidas.js` | la pantalla de Comidas: apuntar, código de barras, mis platos |
+| `js/antojo.js` | el antojo: por qué te pasa, lo que cuesta, alternativas y el análisis a largo plazo (se prueba en `tests.html`) |
+| `js/antojo-ui.js` | la hoja de «Tengo un antojo» y la tarjeta de antojos |
 | `js/messages.js` | el mensaje del día |
 | `js/app.js` | el hilo: pantallas, formularios, selectores y tema |
 | `js/ambient.js` | el fondo vivo (constelación y paralaje), portado de bimio.tools |
