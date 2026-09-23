@@ -540,6 +540,9 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 #scan-video { width: 100%; border-radius: var(--radius); background: var(--ink); aspect-ratio: 4 / 3; object-fit: cover; }
 dialog.sheet.tall { min-height: 80vh; }
 
+.ideas-card .group.inner { box-shadow: none; margin-top: 4px; background: var(--hover); border-color: transparent; }
+.ideas-card .group.inner .log-row { min-height: 56px; }
+
 /* ── evolución: datos de salud ──────────────────────────────── */
 
 .facts > div { position: relative; padding: 13px 18px; }

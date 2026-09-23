@@ -18,11 +18,12 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.5.3';
-    import * as S from './js/store.js?v=0.5.3';
-    import { messageOfTheDay } from './js/messages.js?v=0.5.3';
-    import * as FO from './js/foods.js?v=0.5.3';
-    import * as AN from './js/antojo.js?v=0.5.3';
+    import * as C from './js/calc.js?v=0.6.1';
+    import * as S from './js/store.js?v=0.6.1';
+    import { messageOfTheDay } from './js/messages.js?v=0.6.1';
+    import * as FO from './js/foods.js?v=0.6.1';
+    import * as AN from './js/antojo.js?v=0.6.1';
+    import * as ID from './js/ideas.js?v=0.6.1';
 
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
@@ -181,6 +182,19 @@
     check('análisis: ve que desayunar poco da más antojos', an.insights.some(i => /desayuno/.test(i.title)), JSON.stringify(an.insights.map(i => i.title)));
     check('análisis: ve que el aburrimiento es tu disparador', an.insights.some(i => /detrás/.test(i.title)));
     check('análisis: con menos de 5 antojos no se inventa nada', AN.analyzeCravings(crA.slice(0, 3), foodA, '2026-09-20', 100).need === 2);
+
+    // ideas de comida
+    check('ideas: a las 21 h toca la cena', ID.nextMeal(21) === 'cena');
+    check('ideas: a las 8 h toca el desayuno', ID.nextMeal(8) === 'desayuno');
+    const sg = ID.suggest({ hour: 21, remainingKcal: 500, proteinGap: 40, dayKcalTarget: 2000, avoidText: '' });
+    check('ideas: propone tres cenas', sg.items.length === 3 && sg.items.every(x => x.idea.meal === 'cena'));
+    check('ideas: no se pasan de lo que queda', sg.items.every(x => x.n.kcal <= 580), sg.items.map(x => Math.round(x.n.kcal)).join(', '));
+    const sgNoEgg = ID.suggest({ hour: 21, remainingKcal: 600, proteinGap: 0, dayKcalTarget: 2000, avoidText: 'huevo' });
+    check('ideas: con alergia al huevo, ni una idea con huevo', sgNoEgg.items.every(x => !x.idea.tags.includes('huevo')));
+    const sgDislike = ID.suggest({ hour: 14, remainingKcal: 900, proteinGap: 0, dayKcalTarget: 2200, avoidText: 'no me gusta el salmon ni las lentejas' });
+    check('ideas: lo que no te gusta no sale', sgDislike.items.every(x => !/salm|lentejas/i.test(x.idea.name)), sgDislike.items.map(x => x.idea.name).join(' · '));
+    check('ideas: todas usan alimentos que existen en la tabla', ID.IDEAS.every(i => i.items.every(([id, unit]) => FO.FOODS_BY_ID.get(id)?.u.some(([n]) => n === unit))),
+      ID.IDEAS.flatMap(i => i.items.filter(([id, unit]) => !FO.FOODS_BY_ID.get(id)?.u.some(([n]) => n === unit)).map(([id, unit]) => `${i.id}:${id}/${unit}`)).join(', '));
 
     // semanas y racha
     const wk = C.weeklyChanges(C.dailySeries(days('2026-07-01', 60, i => 100 - 0.1 * i)));

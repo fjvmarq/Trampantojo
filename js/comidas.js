@@ -8,8 +8,9 @@
    Cada apunte guarda sus calorías y nutrientes CALCULADOS en el momento: si la
    tabla cambia en una versión futura, lo que comiste ayer no cambia. */
 
-import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.5.3';
-import { kg1 } from './charts.js?v=0.5.3';
+import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.6.1';
+import { kg1 } from './charts.js?v=0.6.1';
+import { suggest } from './ideas.js?v=0.6.1';
 
 export const MEALS = [
   { id: 'desayuno', label: 'Desayuno' },
@@ -477,6 +478,8 @@ export function initComidas(ctx) {
     const pr = s.protein;
     $('#macros').textContent = `${int(tot.p)} g de proteína${pr ? ` (lo tuyo: ${int(pr[0])}–${int(pr[1])} g)` : ''} · ${int(tot.c)} g hidratos · ${int(tot.f)} g grasa`;
 
+    renderIdeas(s, date, isToday, tot, target);
+
     const wrap = $('#meals');
     wrap.replaceChildren();
     MEALS.forEach(meal => {
@@ -513,6 +516,58 @@ export function initComidas(ctx) {
         if (persist('Plato borrado.')) render();
       }));
     });
+  }
+
+  /* ── ideas para la próxima comida ────────────────────────────────── */
+
+  const MEAL_WORD = { desayuno: 'el desayuno', comida: 'la comida', cena: 'la cena', picoteo: 'picar algo' };
+
+  function renderIdeas(s, date, isToday, tot, target) {
+    const card = $('#ideas-card');
+    card.replaceChildren();
+    if (!isToday || !target) { card.hidden = true; return; }
+    const st = getState();
+    const hour = new Date().getHours() + new Date().getMinutes() / 60;
+    const proteinMid = s.protein ? (s.protein[0] + s.protein[1]) / 2 : 0;
+    const remaining = target - tot.kcal;
+    // la siguiente comida que aún no tenga nada apuntado
+    const SLOTS = [['desayuno', 0], ['media', 10.5], ['comida', 12.5], ['merienda', 16], ['cena', 19.5]];
+    const todays = st.food?.[date] || [];
+    let slot = SLOTS.reduce((acc, [id, from], i) => (hour >= from ? i : acc), 0);
+    while (slot < SLOTS.length && todays.some(e => e.meal === SLOTS[slot][0])) slot++;
+    const slotId = slot < SLOTS.length ? SLOTS[slot][0] : 'picoteo';
+    const ideaMeal = ['media', 'merienda'].includes(slotId) ? 'picoteo' : slotId;
+    const res = suggest({
+      meal: ideaMeal, hour, remainingKcal: remaining, proteinGap: proteinMid - tot.p, dayKcalTarget: target,
+      avoidText: `${st.habits?.allergies || ''} ${st.habits?.dislikes || ''}`,
+      recentIdeaIds: st.meta?.recentIdeas || [],
+    });
+    card.hidden = false;
+    const t = document.createElement('p'); t.className = 'eyebrow';
+    t.textContent = `Ideas para ${slotId === 'media' ? 'media mañana' : slotId === 'merienda' ? 'la merienda' : MEAL_WORD[res.meal]}`;
+    const sub = document.createElement('p'); sub.className = 'card-sub';
+    const gap = Math.round(proteinMid - tot.p);
+    if (remaining < 150) {
+      sub.textContent = 'Por hoy ya has llegado a tu objetivo. Si tienes hambre de verdad: verdura, una infusión o un yogur natural.';
+      card.append(t, sub);
+      return;
+    }
+    sub.textContent = `Te quedan ${int(remaining)} kcal${gap > 15 ? ` y te faltan unos ${gap} g de proteína` : ''}. Toca una idea y la apunto.`;
+    card.append(t, sub);
+    const ul = document.createElement('ul'); ul.className = 'group log inner';
+    res.items.forEach(({ idea, n }) => {
+      ul.appendChild(resultRow(idea.name, `${int(n.kcal)} kcal · ${int(n.p)} g proteína`, '', () => logIdea(idea, n, slotId)));
+    });
+    card.appendChild(ul);
+  }
+
+  function logIdea(idea, n, slotId) {
+    const st = getState();
+    targetMeal = slotId;
+    const entries = n.parts.map(p => entryFor({ ...p.food, src: 'tabla' }, p.unit, p.qty));
+    st.meta = { ...(st.meta || {}), recentIdeas: [idea.id, ...((st.meta?.recentIdeas) || []).filter(x => x !== idea.id)].slice(0, 6) };
+    day = null;
+    addEntries(entries, `${idea.name}: ${int(n.kcal)} kcal`);
   }
 
   function openEdit(date, e) {
