@@ -557,6 +557,7 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 .crv-swap-card { border-color: color-mix(in srgb, var(--ok) 35%, var(--line)); }
 
 /* la calidad del día (Comidas) y de los últimos 14 (Evolución) */
+#water-form { display: block; }
 .backup-nudge { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
 .nudge-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .qday { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }

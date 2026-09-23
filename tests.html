@@ -18,16 +18,17 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.8.1';
-    import * as S from './js/store.js?v=0.8.1';
-    import { messageOfTheDay } from './js/messages.js?v=0.8.1';
-    import * as FO from './js/foods.js?v=0.8.1';
-    import * as AN from './js/antojo.js?v=0.8.1';
-    import * as ID from './js/ideas.js?v=0.8.1';
-    import * as LG from './js/logros.js?v=0.8.1';
-    import * as CQ from './js/calidad.js?v=0.8.1';
-    import * as EJ from './js/ejercicio.js?v=0.8.1';
-    import * as BD from './js/cuerpo.js?v=0.8.1';
+    import * as C from './js/calc.js?v=0.8.2';
+    import * as S from './js/store.js?v=0.8.2';
+    import { messageOfTheDay } from './js/messages.js?v=0.8.2';
+    import * as FO from './js/foods.js?v=0.8.2';
+    import * as AN from './js/antojo.js?v=0.8.2';
+    import * as ID from './js/ideas.js?v=0.8.2';
+    import * as LG from './js/logros.js?v=0.8.2';
+    import * as CQ from './js/calidad.js?v=0.8.2';
+    import * as EJ from './js/ejercicio.js?v=0.8.2';
+    import * as BD from './js/cuerpo.js?v=0.8.2';
+    import * as AG from './js/agua.js?v=0.8.2';
 
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
@@ -224,6 +225,17 @@
     check('antojo: los antojos de calorías malas lo dicen', ['dulce', 'bolleria', 'refresco', 'alcohol', 'embutido'].every(id => AN.cravingQuality(AN.CRAVINGS.find(c => c.id === id)).q === 'm'));
     check('antojo: la napolitana sacia poco, las tostadas mucho', AN.satiety(AN.cravingQuality(AN.CRAVINGS.find(c => c.id === 'bolleria')).tags, 5) === 'poco' && AN.satiety(AN.swapFor(AN.CRAVINGS.find(c => c.id === 'bolleria')).tags, 15) !== 'poco');
     check('antojo: las alternativas de bebida existen', AN.alternatives('bebida', 3, {}).length >= 3 && AN.alternatives('bebida', 3, {}).every(a => AN.portionOf(a.food)));
+
+    // recordatorios de agua
+    const wBase = { count: 2, goal: 8, from: 10, to: 21, every: 2 };
+    check('agua: fuera del horario no avisa', !AG.shouldRemind({ ...wBase, hour: 8, minsSinceGlass: null }) && !AG.shouldRemind({ ...wBase, hour: 22, minsSinceGlass: 600 }));
+    check('agua: a las 10:30 sin vasos todavía no (el reloj empieza a las 10)', !AG.shouldRemind({ ...wBase, count: 0, hour: 10.5, minsSinceGlass: 700 }));
+    check('agua: a las 12 sin vasos, sí', AG.shouldRemind({ ...wBase, count: 0, hour: 12, minsSinceGlass: null }));
+    check('agua: si bebiste hace una hora, no', !AG.shouldRemind({ ...wBase, hour: 15, minsSinceGlass: 60 }));
+    check('agua: si hace tres horas del último vaso, sí', AG.shouldRemind({ ...wBase, hour: 15, minsSinceGlass: 180 }));
+    check('agua: no repite el aviso antes de tiempo', !AG.shouldRemind({ ...wBase, hour: 15, minsSinceGlass: 180, minsSinceReminder: 30 }));
+    check('agua: con el objetivo cumplido, nunca', !AG.shouldRemind({ ...wBase, count: 8, hour: 15, minsSinceGlass: 300 }));
+    check('agua: a media tarde tocarían unos 4 vasos', AG.expectedByNow(15.5, 8, 10, 21) === 4);
 
     // ideas de comida
     check('ideas: a las 21 h toca la cena', ID.nextMeal(21) === 'cena');

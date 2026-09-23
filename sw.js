@@ -10,28 +10,161 @@
 
    Tus datos NO están aquí: están en localStorage, y este fichero no los toca. */
 
-const CACHE = 'trampantojo-0.8.1';
+const CACHE = 'trampantojo-0.8.2';
+
+/* ── los recordatorios de agua ──────────────────────────────────────────
+   La app deja en IndexedDB («trampantojo» › «kv» › «agua») lo que hace falta:
+   vasos de hoy, objetivo, horario, si está activado o silenciado, el código del
+   móvil y el servidor. Aquí se enseña el aviso, y sus botones funcionan sin
+   abrir la app: «+1 vaso» lo apunta en ese puente (la app lo recoge al
+   abrirse) y «Silenciar para siempre» lo apaga y da de baja la suscripción. */
+
+function kvOpen() {
+  return new Promise((resolve, reject) => {
+    const r = indexedDB.open('trampantojo', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+async function kvGet(key) {
+  const db = await kvOpen();
+  try { return await new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(key); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+  finally { db.close(); }
+}
+async function kvPut(key, val) {
+  const db = await kvOpen();
+  try { await new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(val, key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+  finally { db.close(); }
+}
+
+const isoDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// la misma regla que js/agua.js (shouldRemind)
+function shouldRemind({ hour, count, goal, from, to, every, minsSinceGlass, minsSinceReminder }) {
+  if (hour < from || hour >= to) return false;
+  if (count >= goal) return false;
+  const gap = every * 60;
+  const sinceGlass = Math.min(minsSinceGlass ?? Infinity, (hour - from) * 60);
+  if (sinceGlass < gap) return false;
+  if (minsSinceReminder != null && minsSinceReminder < gap) return false;
+  return true;
+}
+
+const WATER_ACTIONS = [{ action: 'vaso', title: '+1 vaso' }, { action: 'silenciar', title: 'Silenciar para siempre' }];
+
+function showWater(b) {
+  const count = b.day === isoDay() ? b.count || 0 : 0;
+  const goal = b.goal || 8;
+  return self.registration.showNotification('Un vaso de agua', {
+    body: count ? `Llevas ${count} de ${goal} vasos hoy y hace rato que no bebes.` : `Hoy aún no has bebido ningún vaso: te esperan ${goal}.`,
+    tag: 'agua', renotify: true, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png',
+    actions: WATER_ACTIONS, data: { url: './' },
+  });
+}
+
+async function tellServer(b, path, body) {
+  if (!b?.pushUrl) return;
+  try { await fetch(`${b.pushUrl}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); }
+  catch { /* sin conexión: la baja de la suscripción ya basta */ }
+}
+
+async function tellClients(msg) {
+  const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  list.forEach(c => c.postMessage(msg));
+}
+
+// El servidor avisa (web push): él ya ha decidido que toca.
+self.addEventListener('push', e => {
+  e.waitUntil((async () => {
+    const b = (await kvGet('agua').catch(() => null)) || {};
+    if (b.silenced || b.cfg?.on === false) {
+      const sub = await self.registration.pushManager.getSubscription();
+      if (sub) await sub.unsubscribe();
+      await tellServer(b, '/baja', { id: b.id });
+      // Chrome obliga a enseñar algo por cada aviso recibido
+      return self.registration.showNotification('Avisos de agua silenciados', { body: 'No volverán a sonar.', tag: 'agua', silent: true, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png' });
+    }
+    await showWater(b);
+    await kvPut('agua', { ...b, lastSent: Date.now() });
+  })());
+});
+
+// Sin servidor: Chrome despierta la app de vez en cuando y aquí se decide.
+self.addEventListener('periodicsync', e => {
+  if (e.tag !== 'agua') return;
+  e.waitUntil((async () => {
+    const b = await kvGet('agua').catch(() => null);
+    if (!b?.cfg?.on || b.silenced) return;
+    const now = new Date();
+    const today = b.day === isoDay(now);
+    const mins = t => (t ? (Date.now() - t) / 60000 : null);
+    const due = shouldRemind({
+      hour: now.getHours() + now.getMinutes() / 60, count: today ? b.count || 0 : 0, goal: b.goal || 8,
+      from: b.cfg.from, to: b.cfg.to, every: b.cfg.every,
+      minsSinceGlass: today ? mins(b.lastGlass) : null, minsSinceReminder: mins(b.lastSent),
+    });
+    if (!due) return;
+    await showWater(b);
+    await kvPut('agua', { ...b, lastSent: Date.now() });
+  })());
+});
+
+self.addEventListener('notificationclick', e => {
+  const n = e.notification;
+  n.close();
+  e.waitUntil((async () => {
+    if (n.tag === 'agua' && e.action === 'vaso') {
+      const b = (await kvGet('agua').catch(() => null)) || {};
+      const day = isoDay();
+      const count = (b.day === day ? b.count || 0 : 0) + 1;
+      const goal = b.goal || 8;
+      await kvPut('agua', { ...b, day, count, pending: (b.day === day ? b.pending || 0 : 0) + 1, lastGlass: Date.now() });
+      await tellServer(b, '/vaso', { id: b.id, day, count, t: Date.now() });
+      await tellClients({ type: 'agua', day, count });
+      if (count >= goal) await self.registration.showNotification('¡Agua del día completada!', { body: `${count} vasos. Hasta mañana.`, tag: 'agua', silent: true, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png' });
+      return;
+    }
+    if (n.tag === 'agua' && e.action === 'silenciar') {
+      const b = (await kvGet('agua').catch(() => null)) || {};
+      await kvPut('agua', { ...b, silenced: true, cfg: { ...(b.cfg || {}), on: false } });
+      const sub = await self.registration.pushManager?.getSubscription();
+      if (sub) await sub.unsubscribe();
+      try { await self.registration.periodicSync?.unregister('agua'); } catch { /* no lo tenía */ }
+      await tellServer(b, '/baja', { id: b.id });
+      await tellClients({ type: 'agua-silenciado' });
+      return;
+    }
+    // tocar el aviso: abrir la app (o traerla delante si ya está abierta)
+    const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const open = list.find(c => new URL(c.url).pathname.startsWith(new URL(self.registration.scope).pathname));
+    if (open) return open.focus();
+    return self.clients.openWindow(n.data?.url || './');
+  })());
+});
 
 const FILES = [
   './',
   'index.html',
-  'css/app.css?v=0.8.1',
-  'js/app.js?v=0.8.1',
-  'js/ambient.js?v=0.8.1',
-  'js/foods.js?v=0.8.1',
-  'js/comidas.js?v=0.8.1',
-  'js/antojo.js?v=0.8.1',
-  'js/antojo-ui.js?v=0.8.1',
-  'js/ideas.js?v=0.8.1',
-  'js/logros.js?v=0.8.1',
-  'js/calidad.js?v=0.8.1',
-  'js/cuerpo.js?v=0.8.1',
-  'js/ejercicio.js?v=0.8.1',
-  'js/copia.js?v=0.8.1',
-  'js/calc.js?v=0.8.1',
-  'js/charts.js?v=0.8.1',
-  'js/messages.js?v=0.8.1',
-  'js/store.js?v=0.8.1',
+  'css/app.css?v=0.8.2',
+  'js/app.js?v=0.8.2',
+  'js/ambient.js?v=0.8.2',
+  'js/foods.js?v=0.8.2',
+  'js/comidas.js?v=0.8.2',
+  'js/antojo.js?v=0.8.2',
+  'js/antojo-ui.js?v=0.8.2',
+  'js/ideas.js?v=0.8.2',
+  'js/logros.js?v=0.8.2',
+  'js/calidad.js?v=0.8.2',
+  'js/cuerpo.js?v=0.8.2',
+  'js/ejercicio.js?v=0.8.2',
+  'js/copia.js?v=0.8.2',
+  'js/agua.js?v=0.8.2',
+  'icons/badge-96.png',
+  'js/calc.js?v=0.8.2',
+  'js/charts.js?v=0.8.2',
+  'js/messages.js?v=0.8.2',
+  'js/store.js?v=0.8.2',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-192.png',

@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/app.css?v=0.8.1">
+  <link rel="stylesheet" href="css/app.css?v=0.8.2">
 </head>
 <body>
   <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
@@ -268,6 +268,17 @@
           </div>
         </div>
         <p class="section-foot">«Auto» sigue el tema del móvil.</p>
+
+        <p class="section-label">Recordatorios de agua</p>
+        <form class="group" id="water-form" autocomplete="off">
+          <button type="button" class="item action" id="water-toggle"><span class="item-title">Avisarme si no bebo<small id="water-toggle-sub">Con «+1 vaso» y «Silenciar para siempre» en la propia notificación</small></span><span class="picker-value" id="water-toggle-val">No</span><span class="chev" aria-hidden="true"></span></button>
+          <button type="button" class="item picker" data-picker="wevery"><span class="item-title">Si no bebo en</span><span class="picker-value" data-for="wevery"></span><span class="chev" aria-hidden="true"></span></button>
+          <button type="button" class="item picker" data-picker="wfrom"><span class="item-title">Desde</span><span class="picker-value" data-for="wfrom"></span><span class="chev" aria-hidden="true"></span></button>
+          <button type="button" class="item picker" data-picker="wto"><span class="item-title">Hasta</span><span class="picker-value" data-for="wto"></span><span class="chev" aria-hidden="true"></span></button>
+          <button type="button" class="item action" id="water-test"><span class="item-title">Probar un aviso ahora</span><span class="chev" aria-hidden="true"></span></button>
+          <input type="hidden" name="wevery"><input type="hidden" name="wfrom"><input type="hidden" name="wto">
+        </form>
+        <p class="section-foot" id="water-note"></p>
 
         <p class="section-label">Copia de seguridad</p>
         <div class="group">
@@ -617,6 +628,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.8.1"></script>
+  <script type="module" src="js/app.js?v=0.8.2"></script>
 </body>
 </html>

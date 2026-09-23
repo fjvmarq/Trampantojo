@@ -2,18 +2,19 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.8.1';
-import * as S from './store.js?v=0.8.1';
-import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.8.1';
-import { initComidas } from './comidas.js?v=0.8.1';
-import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.8.1';
-import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.8.1';
-import { messageOfTheDay } from './messages.js?v=0.8.1';
-import { startAmbient } from './ambient.js?v=0.8.1';
-import { qualityMix } from './calidad.js?v=0.8.1';
-import * as CP from './copia.js?v=0.8.1';
+import * as C from './calc.js?v=0.8.2';
+import * as S from './store.js?v=0.8.2';
+import { weightChart, rateChart, kcalChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.8.2';
+import { initComidas } from './comidas.js?v=0.8.2';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.8.2';
+import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.8.2';
+import { messageOfTheDay } from './messages.js?v=0.8.2';
+import { startAmbient } from './ambient.js?v=0.8.2';
+import { qualityMix } from './calidad.js?v=0.8.2';
+import * as CP from './copia.js?v=0.8.2';
+import * as AG from './agua.js?v=0.8.2';
 
-const VERSION = '0.8.1';
+const VERSION = '0.8.2';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -436,10 +437,101 @@ function renderWater(s) {
       const next = i < n ? i : i + 1;    // tocar el último lleno lo vacía
       state.water = { ...(state.water || {}), [s.today]: next };
       if (next === 0) delete state.water[s.today];
-      if (persist(next === goal ? '¡Agua del día completada!' : null)) render();
+      if (next > n) state.meta = { ...state.meta, lastGlass: Date.now() };
+      if (persist(next === goal ? '¡Agua del día completada!' : null)) {
+        render();
+        syncWater();
+        if (waterCfg().on) AG.reportGlass(s.today, next);
+      }
     });
     box.appendChild(b);
   }
+}
+
+/* ── recordatorios de agua ──────────────────────────────────────────── */
+
+function waterCfg() {
+  return { ...AG.DEFAULTS, ...(state.meta?.agua || {}) };
+}
+
+// El puente con el service worker: le cuenta lo de hoy y recoge los vasos
+// apuntados desde la notificación (y si se silenció desde ella).
+async function syncWater() {
+  if (!state.profile) return;
+  const day = today();
+  const count = state.water?.[day] || 0;
+  const cfg = waterCfg();
+  const r = await AG.syncBridge({ day, count, goal: waterGoal(state.profile.sex), cfg, lastGlass: state.meta?.lastGlass });
+  let changed = false;
+  if (r.added > 0) {
+    state.water = { ...(state.water || {}), [day]: r.count };
+    state.meta = { ...state.meta, lastGlass: Math.max(state.meta?.lastGlass || 0, r.lastGlass || 0) };
+    changed = true;
+  }
+  if (r.silenced && cfg.on) {
+    state.meta = { ...state.meta, agua: { ...cfg, on: false } };
+    changed = true;
+    toast('Recordatorios de agua silenciados desde la notificación.');
+  }
+  if (changed && persist()) render();
+}
+
+function renderWaterSettings() {
+  const cfg = waterCfg();
+  const f = $('#water-form');
+  setPickerValue(f, 'wevery', String(cfg.every));
+  setPickerValue(f, 'wfrom', String(cfg.from));
+  setPickerValue(f, 'wto', String(cfg.to));
+  $('#water-toggle-val').textContent = cfg.on ? 'Sí' : 'No';
+  const note = $('#water-note');
+  if (!AG.supported()) note.textContent = 'Este navegador no deja mandar notificaciones.';
+  else if (typeof Notification !== 'undefined' && Notification.permission === 'denied') note.textContent = 'Las notificaciones de Trampantojo están bloqueadas: actívalas en Ajustes de Android › Aplicaciones › Trampantojo › Notificaciones.';
+  else if (!cfg.on) note.textContent = `Si pasan ${pickerLabel('wevery', String(cfg.every))} sin un vaso, entre las ${cfg.from}:00 y las ${cfg.to}:00, te aviso. Desde la notificación puedes apuntar el vaso o silenciarlo para siempre.`;
+  else note.textContent = AG.PUSH_URL
+    ? `Activado: te aviso si pasan ${pickerLabel('wevery', String(cfg.every))} sin beber, de ${cfg.from}:00 a ${cfg.to}:00.`
+    : 'Activado. Ojo: con la app cerrada, Android sólo deja que una web te avise cuando él quiere (alguna vez al día). Para que el aviso llegue a su hora hace falta el servidor de avisos, que está en camino.';
+}
+
+$('#water-toggle').addEventListener('click', async () => {
+  const cfg = waterCfg();
+  if (cfg.on) {
+    state.meta = { ...state.meta, agua: { ...cfg, on: false } };
+    if (persist('Recordatorios de agua desactivados.')) { render(); syncWater(); }
+    AG.disable();
+    return;
+  }
+  const s = C.summarize(state, today());
+  const r = await AG.enable({ ...cfg, on: true }, s.today, state.water?.[s.today] || 0, waterGoal(state.profile.sex));
+  if (!r.ok) {
+    toast(r.perm === 'denied' ? 'Has bloqueado las notificaciones. Actívalas en Ajustes de Android › Aplicaciones › Trampantojo.' : 'Este móvil no deja mandar notificaciones desde la app.', true);
+    renderWaterSettings();
+    return;
+  }
+  state.meta = { ...state.meta, agua: { ...cfg, on: true } };
+  if (persist('Recordatorios de agua activados.')) { render(); syncWater(); }
+});
+
+$('#water-form').addEventListener('input', () => {
+  const f = $('#water-form');
+  const cfg = { ...waterCfg(), every: Number(f.elements.wevery.value) || 2, from: Number(f.elements.wfrom.value) || 10, to: Number(f.elements.wto.value) || 21 };
+  if (cfg.to <= cfg.from) cfg.to = Math.min(23, cfg.from + 8);
+  state.meta = { ...state.meta, agua: cfg };
+  if (persist()) { renderWaterSettings(); syncWater(); if (cfg.on) AG.reportSettings(cfg, waterGoal(state.profile.sex)); }
+});
+
+$('#water-test').addEventListener('click', async () => {
+  const perm = await AG.askPermission();
+  if (perm !== 'granted') { toast(perm === 'denied' ? 'Las notificaciones están bloqueadas para Trampantojo.' : 'Este móvil no deja mandar notificaciones.', true); renderWaterSettings(); return; }
+  await syncWater();
+  await AG.testNotification(state.water?.[today()] || 0, waterGoal(state.profile.sex));
+  toast('Mira tus notificaciones: prueba «+1 vaso» y, si quieres, «Silenciar para siempre».');
+});
+
+// Lo que cuenta el service worker cuando se toca un botón de la notificación.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'agua' || e.data?.type === 'agua-silenciado') syncWater();
+  });
 }
 
 /* ── logros ─────────────────────────────────────────────────────────── */
@@ -574,6 +666,7 @@ function renderPerfil(s) {
   updateHabitsSuggest();
   reflectTheme();
   renderBackupUi();
+  renderWaterSettings();
   const pl = s.plan;
   const endTxt = s.planEnd ? C.parseDate(s.planEnd).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
   $('#plan-summary').textContent = !pl || !s.hasData ? ''
@@ -827,6 +920,11 @@ const PICKERS = {
   oil: { title: 'Aceite al cocinar', options: () => [
     { value: '', label: 'Sin decir' }, { value: 'poco', label: 'Poco' }, { value: 'normal', label: 'Normal' }, { value: 'mucho', label: 'Bastante' },
   ] },
+  wevery: { title: 'Avisarme si no bebo en', options: () => [
+    { value: '1', label: '1 hora' }, { value: '1.5', label: '1 h 30 min' }, { value: '2', label: '2 horas' }, { value: '3', label: '3 horas' },
+  ] },
+  wfrom: { title: 'Desde', foot: 'Antes de esta hora no te aviso.', options: () => [7, 8, 9, 10, 11, 12].map(h => ({ value: String(h), label: `${h}:00` })) },
+  wto: { title: 'Hasta', foot: 'A partir de esta hora no te aviso.', options: () => [18, 19, 20, 21, 22, 23].map(h => ({ value: String(h), label: `${h}:00` })) },
   portions: { title: 'Tus raciones', options: () => [
     { value: '', label: 'Sin decir' }, { value: 'pequenas', label: 'Pequeñas' }, { value: 'normales', label: 'Normales' }, { value: 'grandes', label: 'Grandes' },
   ] },
@@ -1375,6 +1473,7 @@ window.addEventListener('resize', () => {
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
   if (state.profile) render();
+  syncWater();
   checkForUpdate();
 });
 
@@ -1405,6 +1504,7 @@ comidas = initComidas({ getState: () => state, persist, toast, today, render });
 initAntojo({ getState: () => state, persist, toast, today, render, summary: () => C.summarize(state, today()) });
 setSexClass();
 setTimeout(() => { if (CP.due(12)) runBackup(); else renderBackupUi(); }, 2500);
+syncWater();
 if (loaded.status === 'unreadable') showStorageAlert();
 else if (!state.profile) startWelcome();
 go(location.hash.slice(1) || 'hoy', { push: false });
