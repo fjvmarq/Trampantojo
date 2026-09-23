@@ -600,6 +600,30 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 .shop-name { font-size: 16px; font-weight: 600; }
 .shop-amount { font-size: 13px; color: var(--ink-2); }
 .shop-item.done .shop-name { text-decoration: line-through; color: var(--ink-3); }
+/* el calendario de hábitos */
+.cal-head { display: flex; align-items: center; justify-content: space-between; }
+.cal-head .eyebrow { margin: 0; text-transform: uppercase; }
+.cal-nav { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--hover); color: var(--accent); font: inherit; font-size: 22px; line-height: 1; cursor: pointer; }
+.cal-nav:disabled { color: var(--ink-4); cursor: default; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
+.cal-dow { font-size: 11px; font-weight: 700; color: var(--ink-3); text-align: center; padding-bottom: 2px; }
+.cal-day { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; aspect-ratio: 1 / 1.05; min-width: 0;
+  border: 1px solid transparent; border-radius: 10px; font: inherit; color: var(--ink); cursor: pointer; padding: 0;
+  background: color-mix(in srgb, var(--ok) calc(var(--lvl, 0) * 32%), var(--hover)); }
+.cal-day:disabled { background: transparent; color: var(--ink-4); cursor: default; }
+.cal-day.today { border-color: var(--accent); }
+.cal-day.picked { box-shadow: 0 0 0 2px var(--accent); }
+.cal-num { font-size: 13px; font-weight: 600; line-height: 1; }
+.cal-dots { display: flex; gap: 2px; }
+.cal-dots i, .cal-legend i { display: block; width: 4px; height: 4px; border-radius: 50%; background: var(--line); }
+.cal-dots i.on.h-peso, .cal-legend i.h-peso { background: var(--accent); }
+.cal-dots i.on.h-agua, .cal-legend i.h-agua { background: var(--teal); }
+.cal-dots i.on.h-verde, .cal-legend i.h-verde { background: var(--ok); }
+.cal-dots i.on.h-ejercicio, .cal-legend i.h-ejercicio { background: var(--violet); }
+.cal-dots i.on.h-antojo, .cal-legend i.h-antojo { background: var(--warn); }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cal-legend i { width: 8px; height: 8px; }
 .backup-nudge { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
 .nudge-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .qday { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }

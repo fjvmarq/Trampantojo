@@ -8,11 +8,11 @@
    Cada apunte guarda sus calorías y nutrientes CALCULADOS en el momento: si la
    tabla cambia en una versión futura, lo que comiste ayer no cambia. */
 
-import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.10.0';
-import { kg1 } from './charts.js?v=0.10.0';
-import { suggest } from './ideas.js?v=0.10.0';
-import { foodQuality, entryQuality, productQuality, qualityMix, tagLine, TYPES, QLABEL, QSHORT } from './calidad.js?v=0.10.0';
-import { SLOTS, buildMenu, pickFor, mealNutrients, dayTotal, factorText, shoppingList, shoppingText } from './menu.js?v=0.10.0';
+import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.10.1';
+import { kg1 } from './charts.js?v=0.10.1';
+import { suggest } from './ideas.js?v=0.10.1';
+import { foodQuality, entryQuality, productQuality, qualityMix, tagLine, TYPES, QLABEL, QSHORT } from './calidad.js?v=0.10.1';
+import { SLOTS, buildMenu, pickFor, mealNutrients, dayTotal, factorText, shoppingList, shoppingText } from './menu.js?v=0.10.1';
 
 export const MEALS = [
   { id: 'desayuno', label: 'Desayuno' },

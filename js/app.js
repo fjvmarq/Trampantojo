@@ -2,20 +2,21 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.10.0';
-import * as S from './store.js?v=0.10.0';
-import { weightChart, rateChart, kcalChart, measureChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.10.0';
-import { initComidas } from './comidas.js?v=0.10.0';
-import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.10.0';
-import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.10.0';
-import { messageOfTheDay } from './messages.js?v=0.10.0';
-import { startAmbient } from './ambient.js?v=0.10.0';
-import { qualityMix } from './calidad.js?v=0.10.0';
-import * as CP from './copia.js?v=0.10.0';
-import * as AG from './agua.js?v=0.10.0';
-import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.10.0';
+import * as C from './calc.js?v=0.10.1';
+import * as S from './store.js?v=0.10.1';
+import { weightChart, rateChart, kcalChart, measureChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.10.1';
+import { initComidas } from './comidas.js?v=0.10.1';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.10.1';
+import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.10.1';
+import { messageOfTheDay } from './messages.js?v=0.10.1';
+import { startAmbient } from './ambient.js?v=0.10.1';
+import { qualityMix } from './calidad.js?v=0.10.1';
+import * as CP from './copia.js?v=0.10.1';
+import { HABITS, dayHabits, score as habitScore, monthGrid, monthSummary } from './calendario.js?v=0.10.1';
+import * as AG from './agua.js?v=0.10.1';
+import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.10.1';
 
-const VERSION = '0.10.0';
+const VERSION = '0.10.1';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -347,6 +348,7 @@ function renderEvo(s) {
   renderWaist(s);
   rateChart($('#chart-rate'), s.weekly);
   renderWeek(s);
+  renderCalendar(s);
   renderBadges(s);
   kcalChart($('#chart-kcal'), { food: state.food, target: s.target?.kcal, today: s.today });
   renderExerciseChart(s);
@@ -684,6 +686,77 @@ function checkBadges(s) {
   state.meta = { ...(state.meta || {}), badges: stored };
   persist(first ? null : fresh.length === 1 ? `Logro nuevo: ${fresh[0].title}. ${fresh[0].desc}` : `${fresh.length} logros nuevos: ${fresh.map(b => b.title).join(', ')}`);
 }
+
+/* ── el calendario de hábitos ───────────────────────────────────────── */
+
+let calMonth = null;           // { y, m } del mes que se ve
+let calPicked = null;          // el día tocado
+
+const MONTH_NAMES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+function renderCalendar(s) {
+  const now = C.parseDate(s.today);
+  if (!calMonth) calMonth = { y: now.getFullYear(), m: now.getMonth() };
+  const { y, m } = calMonth;
+  const goal = waterGoal(state.profile.sex);
+  $('#cal-title').textContent = `${MONTH_NAMES[m]} ${y !== now.getFullYear() ? y : ''}`.trim();
+  $('#cal-next').disabled = y === now.getFullYear() && m === now.getMonth();
+  const sum = monthSummary(state, y, m, goal, s.today);
+  $('#cal-sub').textContent = sum.days
+    ? `${sum.good} de ${sum.days} días con tres hábitos o más${sum.best >= 2 ? `; tu mejor racha, ${sum.best} seguidos` : ''}. Cada punto es uno de los cinco.`
+    : 'Este mes aún no ha empezado.';
+  const grid = $('#cal-grid');
+  grid.replaceChildren();
+  ['L', 'M', 'X', 'J', 'V', 'S', 'D'].forEach(d => { const h = document.createElement('span'); h.className = 'cal-dow'; h.textContent = d; grid.appendChild(h); });
+  monthGrid(y, m).flat().forEach(date => {
+    if (!date) { grid.appendChild(Object.assign(document.createElement('span'), { className: 'cal-empty' })); return; }
+    const future = date > s.today;
+    const h = future ? null : dayHabits(state, date, goal);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `cal-day${date === s.today ? ' today' : ''}${date === calPicked ? ' picked' : ''}`;
+    b.disabled = future;
+    const sc = h ? habitScore(h) : 0;
+    b.style.setProperty('--lvl', String(sc / HABITS.length));
+    const num = document.createElement('span'); num.className = 'cal-num'; num.textContent = String(Number(date.slice(8)));
+    const dots = document.createElement('span'); dots.className = 'cal-dots';
+    HABITS.forEach(x => { const d = document.createElement('i'); d.className = `h-${x.id}${h?.[x.id] ? ' on' : ''}`; dots.appendChild(d); });
+    b.append(num, dots);
+    b.setAttribute('aria-label', `${longDate(date)}: ${sc} de 5 hábitos`);
+    b.addEventListener('click', () => { calPicked = date; renderCalendar(s); });
+    grid.appendChild(b);
+  });
+  const legend = $('#cal-legend');
+  legend.replaceChildren();
+  HABITS.forEach(x => {
+    const sp = document.createElement('span');
+    const d = document.createElement('i'); d.className = `h-${x.id} on`;
+    sp.append(d, document.createTextNode(`${x.label} · ${sum.counts[x.id]}`));
+    legend.appendChild(sp);
+  });
+  const detail = $('#cal-detail');
+  if (calPicked && calPicked.slice(0, 7) === `${y}-${String(m + 1).padStart(2, '0')}` && calPicked <= s.today) {
+    const h = dayHabits(state, calPicked, goal);
+    const d = h.detail;
+    const bits = [
+      d.kg != null ? `te pesaste (${kg1(d.kg)} kg)` : 'sin pesarte',
+      `${d.water} de ${goal} vasos`,
+      d.goodPct != null ? `${Math.round(d.goodPct * 100)} % de calorías buenas` : 'comidas sin apuntar',
+      d.exMin ? `${d.exMin} min de ejercicio` : 'sin ejercicio',
+    ];
+    if (d.cravings) bits.push(`${d.beaten} de ${d.cravings} antojos vencidos`);
+    detail.textContent = `${longDate(calPicked)}: ${bits.join(', ')}.`;
+  } else detail.textContent = 'Toca un día para ver qué hiciste.';
+}
+
+$('#cal-prev').addEventListener('click', () => {
+  calMonth = calMonth.m === 0 ? { y: calMonth.y - 1, m: 11 } : { y: calMonth.y, m: calMonth.m - 1 };
+  render();
+});
+$('#cal-next').addEventListener('click', () => {
+  calMonth = calMonth.m === 11 ? { y: calMonth.y + 1, m: 0 } : { y: calMonth.y, m: calMonth.m + 1 };
+  render();
+});
 
 /* ── la cintura ─────────────────────────────────────────────────────── */
 

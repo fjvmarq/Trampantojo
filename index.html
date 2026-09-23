@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/app.css?v=0.10.0">
+  <link rel="stylesheet" href="css/app.css?v=0.10.1">
 </head>
 <body>
   <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
@@ -158,6 +158,17 @@
           <button type="button" role="radio" data-range="-1">Mi plan</button>
         </div>
         <div class="card" id="week-card"></div>
+        <div class="card cal-card">
+          <div class="cal-head">
+            <button type="button" class="cal-nav" id="cal-prev" aria-label="Mes anterior">‹</button>
+            <p class="eyebrow" id="cal-title"></p>
+            <button type="button" class="cal-nav" id="cal-next" aria-label="Mes siguiente">›</button>
+          </div>
+          <p class="card-sub" id="cal-sub"></p>
+          <div class="cal-grid" id="cal-grid" role="grid" aria-label="Tus hábitos del mes"></div>
+          <p class="cal-legend" id="cal-legend"></p>
+          <p class="card-foot" id="cal-detail"></p>
+        </div>
         <div class="card">
           <p class="eyebrow">Evolución del peso</p>
           <p class="card-sub" id="evo-sub"></p>
@@ -693,6 +704,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.10.0"></script>
+  <script type="module" src="js/app.js?v=0.10.1"></script>
 </body>
 </html>
