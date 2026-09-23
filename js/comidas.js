@@ -8,11 +8,12 @@
    Cada apunte guarda sus calorías y nutrientes CALCULADOS en el momento: si la
    tabla cambia en una versión futura, lo que comiste ayer no cambia. */
 
-import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.11.1';
-import { kg1 } from './charts.js?v=0.11.1';
-import { suggest, HOW } from './ideas.js?v=0.11.1';
-import { foodQuality, entryQuality, productQuality, qualityMix, tagLine, TYPES, QLABEL, QSHORT } from './calidad.js?v=0.11.1';
-import { SLOTS, buildMenu, pickFor, mealNutrients, dayTotal, factorText, shoppingList, shoppingText } from './menu.js?v=0.11.1';
+import { FOODS_BY_ID, searchFoods, parsePhrase, stripQty, nutrientsFor, norm } from './foods.js?v=0.12.0';
+import { kg1 } from './charts.js?v=0.12.0';
+import { suggest, HOW } from './ideas.js?v=0.12.0';
+import { foodQuality, entryQuality, productQuality, qualityMix, tagLine, TYPES, QLABEL, QSHORT } from './calidad.js?v=0.12.0';
+import { SLOTS, buildMenu, pickFor, mealNutrients, dayTotal, factorText, shoppingList, shoppingText } from './menu.js?v=0.12.0';
+import { PLACES, placeView } from './fuera.js?v=0.12.0';
 
 export const MEALS = [
   { id: 'desayuno', label: 'Desayuno' },
@@ -698,6 +699,50 @@ export function initComidas(ctx) {
     row.append(shop, redo);
     card.appendChild(row);
   }
+
+  /* ── comer fuera ─────────────────────────────────────────────────── */
+
+  const odlg = $('#out-dialog');
+  let outPlace = 'menu';
+
+  function renderOut() {
+    const place = PLACES.find(p => p.id === outPlace) || PLACES[0];
+    const chips = $('#out-places');
+    chips.replaceChildren();
+    PLACES.forEach(p => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(p.id === place.id));
+      b.textContent = p.label;
+      b.addEventListener('click', () => { outPlace = p.id; renderOut(); });
+      chips.appendChild(b);
+    });
+    $('#out-intro').textContent = place.intro;
+    const box = $('#out-groups');
+    box.replaceChildren();
+    placeView(place).forEach(g => {
+      const h = document.createElement('p'); h.className = `section-label out-${g.q}`; h.textContent = g.title;
+      const ul = document.createElement('ul'); ul.className = 'group log';
+      g.rows.forEach(r => {
+        ul.appendChild(resultRow(r.note, `${portionText({ unit: r.unit, qty: r.qty, grams: r.grams })} de ${r.food.n.toLowerCase()}${r.tags.length ? ` · ${tagLine(r.tags, 2).toLowerCase()}` : ''}`,
+          `${int(r.kcal)} kcal`, () => {
+            targetMeal = mealForNow();
+            day = null;
+            addEntries([entryFor({ ...r.food, src: 'tabla' }, r.unit, r.qty)], `${r.food.n}: ${int(r.kcal)} kcal`);
+            odlg.close();
+          }, r.q));
+      });
+      box.append(h, ul);
+    });
+    const tips = $('#out-tips');
+    tips.replaceChildren();
+    place.tips.forEach(t => { const li = document.createElement('li'); li.textContent = t; tips.appendChild(li); });
+  }
+
+  $('#out-open').addEventListener('click', () => { renderOut(); odlg.showModal(); odlg.scrollTop = 0; });
+  $('#out-close').addEventListener('click', () => odlg.close());
+  odlg.addEventListener('click', e => { if (e.target === odlg) odlg.close(); });
 
   /* ── la lista de la compra ───────────────────────────────────────── */
 

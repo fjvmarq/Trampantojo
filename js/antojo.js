@@ -16,9 +16,9 @@
    Tono: de apoyo, nunca de culpa. Prohibir del todo suele acabar en atracón;
    decidir tú, no. Las explicaciones son de divulgación general, no médicas. */
 
-import { FOODS_BY_ID, nutrientsFor } from './foods.js?v=0.11.1';
-import { foodQuality, TYPES } from './calidad.js?v=0.11.1';
-import { ACT_BY_ID, burned } from './ejercicio.js?v=0.11.1';
+import { FOODS_BY_ID, nutrientsFor } from './foods.js?v=0.12.0';
+import { foodQuality, TYPES } from './calidad.js?v=0.12.0';
+import { ACT_BY_ID, burned } from './ejercicio.js?v=0.12.0';
 
 /* ── lo que te apetece: una ración típica para ponerle precio ──────── */
 // made: de qué está hecho, para entender qué te llevas a la boca.

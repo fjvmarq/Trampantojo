@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="css/app.css?v=0.11.1">
+  <link rel="stylesheet" href="css/app.css?v=0.12.0">
 </head>
 <body>
   <!-- El fondo de bimio.tools: manchas de color que se mueven y la constelación -->
@@ -140,6 +140,11 @@
           </div>
         </div>
         <div class="card ideas-card" id="ideas-card" hidden></div>
+        <button type="button" class="card out-cta" id="out-open">
+          <span class="out-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 1.5-3 4-3 7h3v11"/></svg></span>
+          <span class="craving-text"><strong>¿Comes fuera?</strong><small>Qué pedir en un menú del día, de tapas, en la pizzería…</small></span>
+          <span class="chev" aria-hidden="true"></span>
+        </button>
         <div id="meals"></div>
         <p class="section-label">Menú de la semana</p>
         <div class="card menu-card" id="menu-card"></div>
@@ -561,6 +566,21 @@
     <div class="cmp-strip" id="cmp-strip-after"></div>
   </dialog>
 
+  <dialog id="out-dialog" class="sheet tall">
+    <div class="sheet-grabber" aria-hidden="true"></div>
+    <div class="sheet-bar">
+      <button type="button" class="bar-btn" id="out-close">Cerrar</button>
+      <h2>Comer fuera</h2>
+      <span></span>
+    </div>
+    <div class="menu-days" id="out-places" role="tablist" aria-label="Dónde comes"></div>
+    <p class="card-sub" id="out-intro"></p>
+    <div id="out-groups"></div>
+    <p class="section-label">Trucos para pedir</p>
+    <ul class="out-tips" id="out-tips"></ul>
+    <p class="fine">Las calorías de restaurante varían mucho según la ración y el aceite: son orientativas. Toca un plato para apuntarlo.</p>
+  </dialog>
+
   <dialog id="shop-dialog" class="sheet tall">
     <div class="sheet-grabber" aria-hidden="true"></div>
     <div class="sheet-bar">
@@ -747,6 +767,6 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script type="module" src="js/app.js?v=0.11.1"></script>
+  <script type="module" src="js/app.js?v=0.12.0"></script>
 </body>
 </html>
