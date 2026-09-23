@@ -2,32 +2,26 @@
 
    Si llevas un rato sin beber, una notificación te lo recuerda, con dos
    botones en la propia notificación: «+1 vaso» (lo apunta sin abrir la app) y
-   «Silenciar para siempre» (y no vuelve a sonar: además de apagarlo, se da de
-   baja la suscripción, así que ni un servidor podría insistir).
+   «Silenciar para siempre» (lo apaga y quita el despertador de Chrome: no
+   vuelve a sonar).
 
-   Quién decide CUÁNDO avisar (shouldRemind, más abajo, la misma regla en todas
-   partes): dentro de tu horario, si no has llegado a tu agua y hace más de X
+   Quién decide CUÁNDO avisar (shouldRemind, más abajo, la misma regla aquí y
+   en el service worker): dentro de tu horario, si no has llegado a tu agua y hace más de X
    horas del último vaso (o del último aviso).
 
-   Cómo llega el aviso con la app cerrada — la parte difícil en Android:
-   · Una web no puede programar alarmas. Con la app cerrada, Chrome sólo la
-     despierta por su cuenta con la «sincronización periódica», que decide él
-     (en la práctica, una o dos veces al día). Eso es lo que hay sin servidor.
-   · Para que llegue a su hora hace falta un servidor pequeño que mande el aviso
-     (web push). Está escrito en worker/ (Cloudflare, gratis); cuando esté
-     publicado, PUSH_URL apunta a él y la app se da de alta sola. Sólo recibe un
-     código aleatorio, tu horario y cuántos vasos llevas: ni tu nombre ni tu peso.
+   Con la app cerrada — la parte difícil en Android: una web no puede programar
+   alarmas. Chrome la despierta por su cuenta con la «sincronización periódica»
+   cuando él decide (en la práctica, una o dos veces al día), y entonces se mira
+   si toca avisar. Para avisos a una hora fija haría falta un servidor que los
+   mandara; se decidió no tenerlo (2026-09-23), así que es lo que hay.
 
    El service worker no puede leer localStorage: por eso lo que necesita (vasos
    de hoy, objetivo, horario, silenciado) se le deja en IndexedDB, y los vasos
    que apuntes desde la notificación se recogen al abrir la app. */
 
-export const PUSH_URL = '';            // p. ej. 'https://trampantojo-agua.<cuenta>.workers.dev'
-export const VAPID_PUBLIC = '';        // la clave pública del servidor (base64url)
-
 export const DEFAULTS = { on: false, from: 10, to: 21, every: 2 };
 
-/* ── la regla, igual aquí que en el service worker y en el servidor ──── */
+/* ── la regla, igual aquí que en el service worker ──────────────────── */
 
 // hour: hora local con decimales (14.5 = 14:30)
 export function shouldRemind({ hour, count, goal, from, to, every, minsSinceGlass, minsSinceReminder }) {
@@ -98,7 +92,7 @@ export async function syncBridge({ day, count, goal, cfg, lastGlass }) {
         out = { count: count + added, added, silenced, lastGlass: glass };
         store.put({
           ...prev, day, count: count + added, pending: 0, goal, lastGlass: glass,
-          cfg: { ...cfg, on: cfg.on && !silenced }, id: deviceId(), pushUrl: PUSH_URL,
+          cfg: { ...cfg, on: cfg.on && !silenced }, id: undefined, pushUrl: undefined,
         }, KEY);
       };
       tx.oncomplete = () => resolve(out);
@@ -124,46 +118,12 @@ export async function askPermission() {
   return Notification.requestPermission();
 }
 
-function b64urlToBytes(s) {
-  const pad = '='.repeat((4 - s.length % 4) % 4);
-  const bin = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
-  return Uint8Array.from(bin, c => c.charCodeAt(0));
-}
-
-// Un código aleatorio para este móvil (el servidor no sabe nada más de ti).
-export function deviceId() {
-  try {
-    let id = localStorage.getItem('trampantojo:dispositivo');
-    if (!id) {
-      id = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, '0')).join('');
-      localStorage.setItem('trampantojo:dispositivo', id);
-    }
-    return id;
-  } catch { return null; }
-}
-
-async function post(path, body) {
-  if (!PUSH_URL) return false;
-  try {
-    const r = await fetch(`${PUSH_URL}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    return r.ok;
-  } catch { return false; }
-}
-
-// Activar: permiso, suscripción push (si hay servidor) y la sincronización periódica de respaldo.
-export async function enable(cfg, day, count, goal) {
+// Activar: el permiso de notificaciones y el despertador de Chrome (sincronización periódica).
+export async function enable() {
   const perm = await askPermission();
   if (perm !== 'granted') return { ok: false, perm };
   await clearSilenced();
   const reg = await navigator.serviceWorker.ready;
-  let push = false;
-  if (PUSH_URL && VAPID_PUBLIC && reg.pushManager) {
-    try {
-      const sub = (await reg.pushManager.getSubscription())
-        || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64urlToBytes(VAPID_PUBLIC) });
-      push = await post('/alta', { id: deviceId(), sub, cfg: { ...cfg, goal, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }, day, count });
-    } catch (err) { console.warn('[agua] push', err); }
-  }
   let periodic = false;
   try {
     if (reg.periodicSync) {
@@ -171,25 +131,14 @@ export async function enable(cfg, day, count, goal) {
       if (st.state === 'granted') { await reg.periodicSync.register('agua', { minInterval: 60 * 60 * 1000 }); periodic = true; }
     }
   } catch { /* no lo soporta: da igual */ }
-  return { ok: true, perm, push, periodic };
+  return { ok: true, perm, periodic };
 }
 
 export async function disable() {
   try {
     const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager?.getSubscription();
-    if (sub) await sub.unsubscribe();
     await reg.periodicSync?.unregister('agua');
   } catch { /* da igual */ }
-  await post('/baja', { id: deviceId() });
-}
-
-// Cada vaso se cuenta también al servidor, para que no avise si acabas de beber.
-export function reportGlass(day, count) {
-  return post('/vaso', { id: deviceId(), day, count, t: Date.now() });
-}
-export function reportSettings(cfg, goal) {
-  return post('/ajustes', { id: deviceId(), cfg: { ...cfg, goal, tz: Intl.DateTimeFormat().resolvedOptions().timeZone } });
 }
 
 // Un aviso ahora mismo, para ver cómo es y probar sus botones.

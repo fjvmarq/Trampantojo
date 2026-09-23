@@ -7,8 +7,8 @@
    restaurante varían mucho según la mano con el aceite: son orientativas) y
    unos trucos para pedir. El semáforo sale de calidad.js, no de aquí. */
 
-import { FOODS_BY_ID, nutrientsFor } from './foods.js?v=0.12.0';
-import { foodQuality } from './calidad.js?v=0.12.0';
+import { FOODS_BY_ID, nutrientsFor } from './foods.js?v=0.12.1';
+import { foodQuality } from './calidad.js?v=0.12.1';
 
 // [id de la tabla, ración, cantidad, qué decir]
 export const PLACES = [

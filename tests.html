@@ -18,23 +18,22 @@
   <p id="sum">Ejecutando…</p>
   <ul id="out"></ul>
   <script type="module">
-    import * as C from './js/calc.js?v=0.12.0';
-    import * as S from './js/store.js?v=0.12.0';
-    import { messageOfTheDay } from './js/messages.js?v=0.12.0';
-    import * as FO from './js/foods.js?v=0.12.0';
-    import * as AN from './js/antojo.js?v=0.12.0';
-    import * as ID from './js/ideas.js?v=0.12.0';
-    import * as LG from './js/logros.js?v=0.12.0';
-    import * as CQ from './js/calidad.js?v=0.12.0';
-    import * as EJ from './js/ejercicio.js?v=0.12.0';
-    import * as BD from './js/cuerpo.js?v=0.12.0';
-    import * as AG from './js/agua.js?v=0.12.0';
-    import * as CH from './js/charts.js?v=0.12.0';
-    import * as MN from './js/menu.js?v=0.12.0';
-    import * as CA from './js/calendario.js?v=0.12.0';
-    import * as FT from './js/fotos.js?v=0.12.0';
-    import * as FU from './js/fuera.js?v=0.12.0';
-    import * as WK from './worker/agua.js';
+    import * as C from './js/calc.js?v=0.12.1';
+    import * as S from './js/store.js?v=0.12.1';
+    import { messageOfTheDay } from './js/messages.js?v=0.12.1';
+    import * as FO from './js/foods.js?v=0.12.1';
+    import * as AN from './js/antojo.js?v=0.12.1';
+    import * as ID from './js/ideas.js?v=0.12.1';
+    import * as LG from './js/logros.js?v=0.12.1';
+    import * as CQ from './js/calidad.js?v=0.12.1';
+    import * as EJ from './js/ejercicio.js?v=0.12.1';
+    import * as BD from './js/cuerpo.js?v=0.12.1';
+    import * as AG from './js/agua.js?v=0.12.1';
+    import * as CH from './js/charts.js?v=0.12.1';
+    import * as MN from './js/menu.js?v=0.12.1';
+    import * as CA from './js/calendario.js?v=0.12.1';
+    import * as FT from './js/fotos.js?v=0.12.1';
+    import * as FU from './js/fuera.js?v=0.12.1';
 
     const out = document.getElementById('out');
     let pass = 0, fail = 0;
@@ -327,25 +326,6 @@
     check('agua: no repite el aviso antes de tiempo', !AG.shouldRemind({ ...wBase, hour: 15, minsSinceGlass: 180, minsSinceReminder: 30 }));
     check('agua: con el objetivo cumplido, nunca', !AG.shouldRemind({ ...wBase, count: 8, hour: 15, minsSinceGlass: 300 }));
     check('agua: a media tarde tocarían unos 4 vasos', AG.expectedByNow(15.5, 8, 10, 21) === 4);
-    // el servidor decide igual que la app
-    const grid = [];
-    for (const hour of [8, 10, 10.5, 12, 15, 20.9, 21]) for (const count of [0, 3, 8]) for (const g of [null, 30, 150, 800]) for (const r of [null, 20, 200]) grid.push({ ...wBase, hour, count, minsSinceGlass: g, minsSinceReminder: r });
-    check('agua: el servidor aplica la misma regla que la app', grid.every(c => WK.shouldRemind(c) === AG.shouldRemind(c)), `${grid.filter(c => WK.shouldRemind(c) !== AG.shouldRemind(c)).length} distintos`);
-    const mad1 = WK.localNow('Europe/Madrid', new Date('2026-01-15T11:30:00Z')), mad2 = WK.localNow('Europe/Madrid', new Date('2026-07-15T11:30:00Z'));
-    check('agua: la hora de Madrid, en invierno y en verano', mad1.hour === 12.5 && mad2.hour === 13.5 && mad1.day === '2026-01-15', JSON.stringify([mad1, mad2]));
-    const uW = { cfg: { from: 10, to: 21, every: 2, goal: 8, tz: 'Europe/Madrid' }, day: '2026-07-15', count: 2, last: Date.parse('2026-07-15T09:00:00Z'), lastSent: null };
-    check('agua: el servidor avisa a las 13:30 si el último vaso fue a las 11', WK.due(uW, new Date('2026-07-15T11:30:00Z')));
-    check('agua: y no si bebiste a las 13', !WK.due({ ...uW, last: Date.parse('2026-07-15T11:00:00Z') }, new Date('2026-07-15T11:30:00Z')));
-    try {
-      const kp = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
-      const jwk = await crypto.subtle.exportKey('jwk', kp.privateKey);
-      const jwt = await WK.vapidJwt('https://fcm.googleapis.com/fcm/send/abc', jwk, 'https://fjvmarq.github.io/Trampantojo/');
-      const [h, c, sg] = jwt.split('.');
-      const unb = x => Uint8Array.from(atob(x.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - x.length % 4) % 4)), ch => ch.charCodeAt(0));
-      const valid = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, kp.publicKey, unb(sg), new TextEncoder().encode(`${h}.${c}`));
-      const claims = JSON.parse(new TextDecoder().decode(unb(c)));
-      check('agua: la firma VAPID es válida y va al servicio de push', valid && claims.aud === 'https://fcm.googleapis.com' && unb(sg).length === 64, JSON.stringify(claims));
-    } catch (err) { check('agua: la firma VAPID es válida y va al servicio de push', false, err.message); }
 
     // ideas de comida
     check('ideas: a las 21 h toca la cena', ID.nextMeal(21) === 'cena');

@@ -2,22 +2,22 @@
    Los números salen de calc.js, lo guardado de store.js y los gráficos de
    charts.js. Aquí sólo se decide qué se enseña y cuándo. */
 
-import * as C from './calc.js?v=0.12.0';
-import * as S from './store.js?v=0.12.0';
-import { weightChart, rateChart, kcalChart, measureChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.12.0';
-import { initComidas } from './comidas.js?v=0.12.0';
-import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.12.0';
-import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.12.0';
-import { messageOfTheDay } from './messages.js?v=0.12.0';
-import { startAmbient } from './ambient.js?v=0.12.0';
-import { qualityMix } from './calidad.js?v=0.12.0';
-import * as CP from './copia.js?v=0.12.0';
-import { HABITS, dayHabits, score as habitScore, monthGrid, monthSummary } from './calendario.js?v=0.12.0';
-import * as FT from './fotos.js?v=0.12.0';
-import * as AG from './agua.js?v=0.12.0';
-import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.12.0';
+import * as C from './calc.js?v=0.12.1';
+import * as S from './store.js?v=0.12.1';
+import { weightChart, rateChart, kcalChart, measureChart, kg1, signed1, shortDate, longDate } from './charts.js?v=0.12.1';
+import { initComidas } from './comidas.js?v=0.12.1';
+import { initAntojo, renderCravingCard } from './antojo-ui.js?v=0.12.1';
+import { waterGoal, evaluateBadges, weekSummary } from './logros.js?v=0.12.1';
+import { messageOfTheDay } from './messages.js?v=0.12.1';
+import { startAmbient } from './ambient.js?v=0.12.1';
+import { qualityMix } from './calidad.js?v=0.12.1';
+import * as CP from './copia.js?v=0.12.1';
+import { HABITS, dayHabits, score as habitScore, monthGrid, monthSummary } from './calendario.js?v=0.12.1';
+import * as FT from './fotos.js?v=0.12.1';
+import * as AG from './agua.js?v=0.12.1';
+import { ACTIVITIES, ACT_BY_ID, burned, exerciseEntry, weeksMinutes, weekMinutes, WHO_WEEKLY_MIN } from './ejercicio.js?v=0.12.1';
 
-const VERSION = '0.12.0';
+const VERSION = '0.12.1';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -450,7 +450,6 @@ function renderWater(s) {
       if (persist(next === goal ? '¡Agua del día completada!' : null)) {
         render();
         syncWater();
-        if (waterCfg().on) AG.reportGlass(s.today, next);
       }
     });
     box.appendChild(b);
@@ -632,9 +631,7 @@ function renderWaterSettings() {
   if (!AG.supported()) note.textContent = 'Este navegador no deja mandar notificaciones.';
   else if (typeof Notification !== 'undefined' && Notification.permission === 'denied') note.textContent = 'Las notificaciones de Trampantojo están bloqueadas: actívalas en Ajustes de Android › Aplicaciones › Trampantojo › Notificaciones.';
   else if (!cfg.on) note.textContent = `Si pasan ${pickerLabel('wevery', String(cfg.every))} sin un vaso, entre las ${cfg.from}:00 y las ${cfg.to}:00, te aviso. Desde la notificación puedes apuntar el vaso o silenciarlo para siempre.`;
-  else note.textContent = AG.PUSH_URL
-    ? `Activado: te aviso si pasan ${pickerLabel('wevery', String(cfg.every))} sin beber, de ${cfg.from}:00 a ${cfg.to}:00.`
-    : 'Activado. Ojo: con la app cerrada, Android sólo deja que una web te avise cuando él quiere (alguna vez al día). Para que el aviso llegue a su hora hace falta el servidor de avisos, que está en camino.';
+  else note.textContent = `Activado, de ${cfg.from}:00 a ${cfg.to}:00. Ojo: con la app cerrada, Android sólo deja que una web te avise cuando Chrome la despierta (una o dos veces al día), no a una hora fija.`;
 }
 
 $('#water-toggle').addEventListener('click', async () => {
@@ -645,8 +642,7 @@ $('#water-toggle').addEventListener('click', async () => {
     AG.disable();
     return;
   }
-  const s = C.summarize(state, today());
-  const r = await AG.enable({ ...cfg, on: true }, s.today, state.water?.[s.today] || 0, waterGoal(state.profile.sex));
+  const r = await AG.enable();
   if (!r.ok) {
     toast(r.perm === 'denied' ? 'Has bloqueado las notificaciones. Actívalas en Ajustes de Android › Aplicaciones › Trampantojo.' : 'Este móvil no deja mandar notificaciones desde la app.', true);
     renderWaterSettings();
@@ -661,7 +657,7 @@ $('#water-form').addEventListener('input', () => {
   const cfg = { ...waterCfg(), every: Number(f.elements.wevery.value) || 2, from: Number(f.elements.wfrom.value) || 10, to: Number(f.elements.wto.value) || 21 };
   if (cfg.to <= cfg.from) cfg.to = Math.min(23, cfg.from + 8);
   state.meta = { ...state.meta, agua: cfg };
-  if (persist()) { renderWaterSettings(); syncWater(); if (cfg.on) AG.reportSettings(cfg, waterGoal(state.profile.sex)); }
+  if (persist()) { renderWaterSettings(); syncWater(); }
 });
 
 $('#water-test').addEventListener('click', async () => {

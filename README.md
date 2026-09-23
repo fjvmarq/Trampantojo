@@ -76,7 +76,7 @@ carga, si el service worker está activo y cuántas pesadas hay guardadas.
 | Calendario de hábitos | En Evolución (`js/calendario.js`): el mes a la vista, cada día teñido según cuántos de cinco hábitos cumpliste (te pesaste, tu agua, ≥70 % de calorías buenas, ≥20 min de ejercicio, un antojo vencido), con un punto de color por hábito. Tocando un día, el detalle. Días buenos (tres o más) y tu mejor racha del mes. Todo sale de tus datos, sin marcar nada |
 | Agua, logros y tu semana | Vasos de un toque en Hoy (8 hombre / 7 mujer). 19 logros calculados de tus datos (`js/logros.js`), con aviso al conseguir uno. «Esta semana» en Evolución y el lunes en el mensaje del día |
 | Ejercicio | En Hoy, «Apuntar ejercicio» (13 actividades, minutos): lo que gasta se estima con los MET del Compendio de Actividades Físicas, con tu peso y descontando lo que gastarías igual ((MET − 1) × kg × horas; `js/ejercicio.js`). Minutos de los últimos 7 días frente a los **150 que recomienda la OMS**, gráfico de 8 semanas en Evolución y dos logros. **Por defecto no se suma a lo que puedes comer** (tu nivel de actividad ya cuenta el ejercicio habitual y las estimaciones se pasan); en Perfil › Tus hábitos se puede sumar la mitad o todo |
-| Recordatorios de agua | Perfil › Recordatorios de agua (`js/agua.js`): si pasan X horas sin un vaso dentro de tu horario y no has llegado a tu agua, una notificación con **«+1 vaso»** (lo apunta sin abrir la app) y **«Silenciar para siempre»** (lo apaga y da de baja la suscripción). «Probar un aviso ahora» enseña uno al momento. Con la app cerrada, sin servidor, sólo llega cuando Chrome despierta la app (sincronización periódica, una o dos veces al día); para que llegue a su hora hace falta el servidor de `worker/` (web push, Cloudflare, gratis) |
+| Recordatorios de agua | Perfil › Recordatorios de agua (`js/agua.js`): si pasan X horas sin un vaso dentro de tu horario y no has llegado a tu agua, una notificación con **«+1 vaso»** (lo apunta sin abrir la app) y **«Silenciar para siempre»** (lo apaga y da de baja la suscripción). «Probar un aviso ahora» enseña uno al momento. Con la app cerrada sólo llega cuando Chrome despierta la app (sincronización periódica, una o dos veces al día): una web en Android no puede programar alarmas, y se decidió no tener un servidor que mandara los avisos |
 | Menú de la semana | En Comidas (`js/menu.js`): siete días de platos de casa de calorías buenas en cinco tomas (desayuno, media mañana, comida, merienda y cena), con las **raciones ajustadas a tus calorías** (de media en media, hasta el doble; los tentempiés, enteros), buscando proteína, sin tus alergias y sin repetir plato dos días seguidos. Cada plato trae su «Cómo se hace» (cocina de casa, sin freír), se apunta de un toque o se cambia por otro; «Otra propuesta» rehace la semana |
 | Lista de la compra | La del menú, por pasillos y en cantidades de tienda (el arroz y la pasta en crudo, las tortillas en huevos, la leche en litros, lo que va por piezas redondeado a piezas). Se marca al echarlo al carro y se comparte por WhatsApp o donde quieras |
 | Comer fuera | En Comidas, «¿Comes fuera?» (`js/fuera.js`): menú del día, bar de tapas, pizzería, hamburguesería, japonés y kebab. Para cada sitio, lo que conviene pedir, lo que va con medida y lo que más engorda sin alimentar (el semáforo sale de la tabla), con kcal orientativas, el porqué y trucos para pedir. Se apunta de un toque |
@@ -124,22 +124,6 @@ python -m http.server 8791
 | `js/ambient.js` | el fondo vivo (constelación y paralaje), portado de bimio.tools |
 | `sw.js` | funcionar sin conexión |
 | `tools/version.py` | sube la versión en todos los sitios a la vez |
-
-### El servidor de los avisos de agua (`worker/`)
-
-Un Cloudflare Worker gratuito (`worker/agua.js`): la app se da de alta con un
-código aleatorio, su suscripción push y su horario; cada 15 minutos el Worker
-mira a quién le toca (la misma regla que `js/agua.js`, con test) y le manda un
-aviso **vacío** (el texto lo pone el móvil). «Silenciar para siempre» lo borra, y
-si no llegara, el móvil da de baja la suscripción y el siguiente envío (410) lo
-borra solo.
-
-1. `pwsh tools/vapid-keys.ps1` — crea las claves en `worker/.vapid.json` (fuera de git).
-2. Un token de Cloudflare con la plantilla «Edit Cloudflare Workers», en
-   `%USERPROFILE%\.trampantojo-cloudflare-token` o en `CLOUDFLARE_API_TOKEN`.
-3. `python tools/worker-deploy.py --apply` — crea el KV, sube el Worker con su
-   secreto, pone el cron, lo publica en workers.dev y apunta `js/agua.js` a él.
-   Se puede repetir.
 
 ### Publicar una versión
 

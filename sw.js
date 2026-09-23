@@ -10,14 +10,14 @@
 
    Tus datos NO están aquí: están en localStorage, y este fichero no los toca. */
 
-const CACHE = 'trampantojo-0.12.0';
+const CACHE = 'trampantojo-0.12.1';
 
 /* ── los recordatorios de agua ──────────────────────────────────────────
    La app deja en IndexedDB («trampantojo» › «kv» › «agua») lo que hace falta:
-   vasos de hoy, objetivo, horario, si está activado o silenciado, el código del
-   móvil y el servidor. Aquí se enseña el aviso, y sus botones funcionan sin
-   abrir la app: «+1 vaso» lo apunta en ese puente (la app lo recoge al
-   abrirse) y «Silenciar para siempre» lo apaga y da de baja la suscripción. */
+   vasos de hoy, objetivo, horario y si está activado o silenciado. Cuando
+   Chrome despierta la app (sincronización periódica) se mira si toca avisar, y
+   los botones del aviso funcionan sin abrirla: «+1 vaso» lo apunta en ese
+   puente (la app lo recoge al abrirse) y «Silenciar para siempre» lo apaga. */
 
 function kvOpen() {
   return new Promise((resolve, reject) => {
@@ -63,34 +63,12 @@ function showWater(b) {
   });
 }
 
-async function tellServer(b, path, body) {
-  if (!b?.pushUrl) return;
-  try { await fetch(`${b.pushUrl}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); }
-  catch { /* sin conexión: la baja de la suscripción ya basta */ }
-}
-
 async function tellClients(msg) {
   const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   list.forEach(c => c.postMessage(msg));
 }
 
-// El servidor avisa (web push): él ya ha decidido que toca.
-self.addEventListener('push', e => {
-  e.waitUntil((async () => {
-    const b = (await kvGet('agua').catch(() => null)) || {};
-    if (b.silenced || b.cfg?.on === false) {
-      const sub = await self.registration.pushManager.getSubscription();
-      if (sub) await sub.unsubscribe();
-      await tellServer(b, '/baja', { id: b.id });
-      // Chrome obliga a enseñar algo por cada aviso recibido
-      return self.registration.showNotification('Avisos de agua silenciados', { body: 'No volverán a sonar.', tag: 'agua', silent: true, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png' });
-    }
-    await showWater(b);
-    await kvPut('agua', { ...b, lastSent: Date.now() });
-  })());
-});
-
-// Sin servidor: Chrome despierta la app de vez en cuando y aquí se decide.
+// Chrome despierta la app de vez en cuando y aquí se decide si toca.
 self.addEventListener('periodicsync', e => {
   if (e.tag !== 'agua') return;
   e.waitUntil((async () => {
@@ -120,7 +98,6 @@ self.addEventListener('notificationclick', e => {
       const count = (b.day === day ? b.count || 0 : 0) + 1;
       const goal = b.goal || 8;
       await kvPut('agua', { ...b, day, count, pending: (b.day === day ? b.pending || 0 : 0) + 1, lastGlass: Date.now() });
-      await tellServer(b, '/vaso', { id: b.id, day, count, t: Date.now() });
       await tellClients({ type: 'agua', day, count });
       if (count >= goal) await self.registration.showNotification('¡Agua del día completada!', { body: `${count} vasos. Hasta mañana.`, tag: 'agua', silent: true, icon: 'icons/icon-192.png', badge: 'icons/badge-96.png' });
       return;
@@ -128,10 +105,7 @@ self.addEventListener('notificationclick', e => {
     if (n.tag === 'agua' && e.action === 'silenciar') {
       const b = (await kvGet('agua').catch(() => null)) || {};
       await kvPut('agua', { ...b, silenced: true, cfg: { ...(b.cfg || {}), on: false } });
-      const sub = await self.registration.pushManager?.getSubscription();
-      if (sub) await sub.unsubscribe();
       try { await self.registration.periodicSync?.unregister('agua'); } catch { /* no lo tenía */ }
-      await tellServer(b, '/baja', { id: b.id });
       await tellClients({ type: 'agua-silenciado' });
       return;
     }
@@ -146,29 +120,29 @@ self.addEventListener('notificationclick', e => {
 const FILES = [
   './',
   'index.html',
-  'css/app.css?v=0.12.0',
-  'js/app.js?v=0.12.0',
-  'js/ambient.js?v=0.12.0',
-  'js/foods.js?v=0.12.0',
-  'js/comidas.js?v=0.12.0',
-  'js/antojo.js?v=0.12.0',
-  'js/antojo-ui.js?v=0.12.0',
-  'js/ideas.js?v=0.12.0',
-  'js/logros.js?v=0.12.0',
-  'js/calidad.js?v=0.12.0',
-  'js/cuerpo.js?v=0.12.0',
-  'js/ejercicio.js?v=0.12.0',
-  'js/copia.js?v=0.12.0',
-  'js/agua.js?v=0.12.0',
-  'js/menu.js?v=0.12.0',
-  'js/calendario.js?v=0.12.0',
-  'js/fotos.js?v=0.12.0',
-  'js/fuera.js?v=0.12.0',
+  'css/app.css?v=0.12.1',
+  'js/app.js?v=0.12.1',
+  'js/ambient.js?v=0.12.1',
+  'js/foods.js?v=0.12.1',
+  'js/comidas.js?v=0.12.1',
+  'js/antojo.js?v=0.12.1',
+  'js/antojo-ui.js?v=0.12.1',
+  'js/ideas.js?v=0.12.1',
+  'js/logros.js?v=0.12.1',
+  'js/calidad.js?v=0.12.1',
+  'js/cuerpo.js?v=0.12.1',
+  'js/ejercicio.js?v=0.12.1',
+  'js/copia.js?v=0.12.1',
+  'js/agua.js?v=0.12.1',
+  'js/menu.js?v=0.12.1',
+  'js/calendario.js?v=0.12.1',
+  'js/fotos.js?v=0.12.1',
+  'js/fuera.js?v=0.12.1',
   'icons/badge-96.png',
-  'js/calc.js?v=0.12.0',
-  'js/charts.js?v=0.12.0',
-  'js/messages.js?v=0.12.0',
-  'js/store.js?v=0.12.0',
+  'js/calc.js?v=0.12.1',
+  'js/charts.js?v=0.12.1',
+  'js/messages.js?v=0.12.1',
+  'js/store.js?v=0.12.1',
   'manifest.webmanifest',
   'icons/icon.svg',
   'icons/icon-192.png',
