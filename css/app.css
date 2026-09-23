@@ -47,6 +47,9 @@
   --hud-ink: #ffffff;
   --grid-ink: 0, 0, 0;
   --icon-glow: rgba(255, 159, 26, 0.38);   /* el brillo del icono amarillo */
+  /* las tarjetas son de vidrio: dejan ver un poco las manchas y la constelación */
+  --glass: color-mix(in srgb, var(--card) 70%, transparent);
+  --glass-blur: saturate(170%) blur(14px);
   /* gráficos */
   --chart-trend: #0071e3;
   --chart-dot: rgba(0, 113, 227, 0.36);
@@ -78,6 +81,7 @@
   --line: #2c2c2e;
   --surface: #161618;
   --hover: #2c2c2e;
+  --glass: color-mix(in srgb, var(--card) 70%, transparent);
   --pressed: #3a3a3c;
   --accent: #0a84ff;
   --accent-text: #409cff;
@@ -112,6 +116,7 @@
     --line: #2c2c2e;
     --surface: #161618;
     --hover: #2c2c2e;
+    --glass: color-mix(in srgb, var(--card) 70%, transparent);
     --pressed: #3a3a3c;
     --accent: #0a84ff;
     --accent-text: #409cff;
@@ -176,28 +181,28 @@ body {
 }
 .page-fx .hx { position: absolute; border-radius: 50%; filter: blur(64px); pointer-events: none; }
 .page-fx .b1 {
-  width: 70vw; height: 70vw; left: -18vw; top: 8vh; opacity: 0.40;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 48%, transparent), transparent 70%);
+  width: min(104vw, 760px); height: min(104vw, 760px); left: -32vw; top: 17vh; opacity: 0.8;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 72%, transparent), transparent 70%);
   animation: drift-a 24s ease-in-out infinite alternate;
 }
 .page-fx .b2 {
-  width: 64vw; height: 64vw; right: -18vw; top: 36vh; opacity: 0.34;
+  width: min(92vw, 700px); height: min(92vw, 700px); right: -34vw; top: 42vh; opacity: 0.55;
   background: radial-gradient(circle, color-mix(in srgb, var(--teal) 48%, transparent), transparent 70%);
   animation: drift-b 28s ease-in-out infinite alternate;
 }
 .page-fx .b3 {
-  width: 66vw; height: 66vw; left: 4vw; top: 70vh; opacity: 0.28;
-  background: radial-gradient(circle, color-mix(in srgb, var(--violet) 62%, transparent), transparent 68%);
+  width: min(104vw, 760px); height: min(104vw, 760px); left: -28vw; top: 66vh; opacity: 0.8;
+  background: radial-gradient(circle, color-mix(in srgb, var(--violet) 90%, transparent), transparent 68%);
   animation: drift-c 32s ease-in-out infinite alternate;
 }
 .page-fx .b4 {
-  width: 60vw; height: 60vw; right: -8vw; top: 100vh; opacity: 0.27;
+  width: min(88vw, 660px); height: min(88vw, 660px); right: -26vw; top: 90vh; opacity: 0.5;
   background: radial-gradient(circle, color-mix(in srgb, var(--mint) 60%, transparent), transparent 68%);
   animation: drift-a 30s ease-in-out infinite alternate-reverse;
 }
 .page-fx .b5 {
-  width: 66vw; height: 66vw; left: -14vw; top: 126vh; opacity: 0.28;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 42%, transparent), transparent 70%);
+  width: min(98vw, 740px); height: min(98vw, 740px); left: 8vw; top: 108vh; opacity: 0.62;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 50%, transparent), transparent 70%);
   animation: drift-b 34s ease-in-out infinite alternate;
 }
 .page-cloud { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -244,8 +249,12 @@ body {
 
 /* ── tarjetas: blancas, borde fino, sombra suave (las tool-card de bimio.tools) ── */
 
+.card, .group, .tile, .badge {
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+dialog .card, dialog .group, dialog .tile, dialog .badge { -webkit-backdrop-filter: none; backdrop-filter: none; }
 .card {
-  background: var(--card);
+  background: var(--glass);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -274,7 +283,7 @@ body {
 /* ── lista agrupada (las filas de ajustes de BIMIO: título a la izquierda, valor a la derecha) ── */
 
 .group {
-  background: var(--card);
+  background: var(--glass);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -425,7 +434,7 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 .hero-delta.good { color: var(--ok-text); }
 
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 14px; }
-.tile { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 15px 15px; min-width: 0; }
+.tile { background: var(--glass); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 15px 15px; min-width: 0; }
 .tile .eyebrow { font-size: 11.5px; color: var(--ink-3); }
 .tile-value { margin: 4px 0 0; font-size: 24px; font-weight: 700; line-height: 1.1; letter-spacing: -0.022em; }
 .tile-sub { margin: 5px 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.35; }
@@ -456,7 +465,7 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
   display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; cursor: pointer;
   font: inherit; color: var(--ink);
   border-color: color-mix(in srgb, #ff9f1a 45%, var(--line));
-  background: linear-gradient(135deg, color-mix(in srgb, #ffde4a 16%, var(--card)), var(--card) 70%);
+  background: linear-gradient(135deg, color-mix(in srgb, #ffde4a 18%, var(--glass)), var(--glass) 70%);
 }
 .craving-cta:active { transform: scale(0.99); }
 .craving-icon {
@@ -509,9 +518,11 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 
 .water-head { display: flex; align-items: baseline; justify-content: space-between; }
 .water-count { font-size: 14px; font-weight: 600; color: var(--ink-2); }
-.glasses { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+/* ocho vasos por fila: caben en el móvil más estrecho sin que el último salte de línea */
+.glasses { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
 .glass {
-  width: 36px; height: 44px; border: 0; padding: 0; background: none; cursor: pointer; color: var(--accent);
+  width: 100%; max-width: 40px; aspect-ratio: 36 / 44; justify-self: center;
+  border: 0; padding: 0; background: none; cursor: pointer; color: var(--accent);
 }
 .glass svg { width: 100%; height: 100%; }
 .glass .g-out { fill: none; stroke: color-mix(in srgb, var(--accent) 45%, var(--line)); stroke-width: 1.6; }
@@ -525,7 +536,7 @@ body:not(.sex-m) .measures { grid-template-columns: 1fr 1fr; }
 .badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
 .badge {
   display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 12px 6px 10px;
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+  background: var(--glass); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
 }
 .badge-token {
   width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;

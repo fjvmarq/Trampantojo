@@ -6,7 +6,7 @@
    preferencia a la proteína si vas corto. Nunca se propone algo que choque
    con tus alergias o con lo que no te gusta. */
 
-import { FOODS_BY_ID, nutrientsFor, norm } from './foods.js?v=0.7.0';
+import { FOODS_BY_ID, nutrientsFor, norm } from './foods.js?v=0.7.1';
 
 // items: [id de la tabla, ración, cantidad]; tags: para descartar por alergias o gustos
 const IDEAS = [

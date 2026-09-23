@@ -12,7 +12,7 @@
    Tono: de apoyo, nunca de culpa. Prohibir del todo suele acabar en atracón;
    decidir tú, no. Las explicaciones son de divulgación general, no médicas. */
 
-import { FOODS_BY_ID, nutrientsFor } from './foods.js?v=0.7.0';
+import { FOODS_BY_ID, nutrientsFor } from './foods.js?v=0.7.1';
 
 /* ── lo que te apetece: una ración típica para ponerle precio ──────── */
 export const CRAVINGS = [
